@@ -7,27 +7,26 @@ from lnbits.core.services import create_invoice
 from lnbits.core.views.api import api_payment
 from lnbits.helpers import urlsafe_short_hash
 
-from ..watchonly.crud import get_config, get_fresh_address  # type: ignore
 from . import db
 from .helpers import fetch_onchain_balance
-from .models import Charges, CreateCharge, SatsPayThemes
+from .models import Charges, CreateCharge, SatsPayThemes, WalletAccountConfig
 
 
-async def create_charge(user: str, data: CreateCharge) -> Charges:
+async def create_charge(
+    user: str,
+    data: CreateCharge,
+    config: Optional[WalletAccountConfig],
+    onchainaddress: Optional[str] = None,
+) -> Charges:
     data = CreateCharge(**data.dict())
     charge_id = urlsafe_short_hash()
     if data.onchainwallet:
-        config = await get_config(user)
-        assert config
+        if not onchainaddress or not config:
+            raise Exception(f"Wallet '{data.onchainwallet}' can no longer be accessed.")
         data.extra = json.dumps(
             {"mempool_endpoint": config.mempool_endpoint, "network": config.network}
         )
-        onchain = await get_fresh_address(data.onchainwallet)
-        if not onchain:
-            raise Exception(f"Wallet '{data.onchainwallet}' can no longer be accessed.")
-        onchainaddress = onchain.address
-    else:
-        onchainaddress = None
+
     if data.lnbitswallet:
         payment_hash, payment_request = await create_invoice(
             wallet_id=data.lnbitswallet,

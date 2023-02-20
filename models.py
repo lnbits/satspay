@@ -89,3 +89,11 @@ class SatsPayThemes(BaseModel):
     @classmethod
     def from_row(cls, row: Row) -> "SatsPayThemes":
         return cls(**dict(row))
+
+
+class WalletAccountConfig(BaseModel):
+    mempool_endpoint: str
+    receive_gap_limit: int
+    change_gap_limit: int
+    sats_denominated: bool
+    network: str

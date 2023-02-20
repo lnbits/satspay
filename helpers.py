@@ -1,7 +1,11 @@
+from typing import Tuple
+
 import httpx
 from loguru import logger
 
-from .models import Charges
+from lnbits.app import settings
+
+from .models import Charges, WalletAccountConfig
 
 
 def public_charge(charge: Charges):
@@ -59,3 +63,28 @@ async def fetch_onchain_balance(charge: Charges):
     async with httpx.AsyncClient() as client:
         r = await client.get(endpoint + "/api/address/" + charge.onchainaddress)
         return r.json()["chain_stats"]["funded_txo_sum"]
+
+
+async def fetch_onchain_config(
+    wallet_id: str, api_key: str
+) -> Tuple[WalletAccountConfig, str]:
+    async with httpx.AsyncClient() as client:
+        headers = {"X-API-KEY": api_key}
+        r = await client.get(
+            url=f"http://{settings.host}:{settings.port}/watchonly/api/v1/config",
+            headers=headers,
+        )
+        r.raise_for_status()
+        config = r.json()
+
+        r = await client.get(
+            url=f"http://{settings.host}:{settings.port}/watchonly/api/v1/address/{wallet_id}",
+            headers=headers,
+        )
+        r.raise_for_status()
+        address_data = r.json()
+
+        if not address_data:
+            raise ValueError("Cannot fetch new address!")
+
+        return WalletAccountConfig.parse_obj(config), address_data["address"]
