@@ -1,9 +1,9 @@
 {
     "repos": [
         {
-            "id": "market",
+            "id": "satspay",
             "organisation": "lnbits",
-            "repository": "market"
+            "repository": "satspay"
         }
     ]
 }
