@@ -1,8 +1,8 @@
 import asyncio
+from typing import List
 
 from fastapi import APIRouter
 from fastapi.staticfiles import StaticFiles
-from typing import List
 
 from lnbits.db import Database
 from lnbits.helpers import template_renderer

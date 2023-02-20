@@ -25,8 +25,8 @@ from .crud import (
     save_theme,
     update_charge,
 )
-from .helpers import call_webhook, public_charge
-from .models import CreateCharge, SatsPayThemes
+from .helpers import call_webhook, fetch_onchain_config, public_charge
+from .models import CreateCharge, SatsPayThemes, WalletAccountConfig
 
 
 @satspay_ext.post("/api/v1/charge")
@@ -34,7 +34,19 @@ async def api_charge_create(
     data: CreateCharge, wallet: WalletTypeInfo = Depends(require_invoice_key)
 ):
     try:
-        charge = await create_charge(user=wallet.wallet.user, data=data)
+        if data.onchainwallet:
+            config, new_address = await fetch_onchain_config(
+                data.onchainwallet, wallet.wallet.inkey
+            )
+        else:
+            config, new_address = None, None
+
+        charge = await create_charge(
+            user=wallet.wallet.user,
+            data=data,
+            config=config,
+            onchainaddress=new_address,
+        )
         assert charge
         return {
             **charge.dict(),
@@ -180,7 +192,9 @@ async def api_theme_delete(theme_id):
     return "", HTTPStatus.NO_CONTENT
 
 
-@satspay_ext.delete("/api/v1", status_code=HTTPStatus.OK, dependencies=[Depends(check_admin)])
+@satspay_ext.delete(
+    "/api/v1", status_code=HTTPStatus.OK, dependencies=[Depends(check_admin)]
+)
 async def api_stop():
     for t in scheduled_tasks:
         try:
