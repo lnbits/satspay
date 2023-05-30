@@ -31,7 +31,7 @@ async def create_charge(
         payment_hash, payment_request = await create_invoice(
             wallet_id=data.lnbitswallet,
             amount=data.amount,
-            memo=charge_id,
+            memo=data.description,
             extra={"tag": "charge"},
         )
     else:
