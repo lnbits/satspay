@@ -33,6 +33,7 @@ async def create_charge(
             amount=data.amount,
             memo=data.description,
             extra={"tag": "charge"},
+            expiry=int(data.time * 60), # convert minutes to seconds
         )
     else:
         payment_hash = None
