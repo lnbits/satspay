@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from http import HTTPStatus
 
 from fastapi import Depends, HTTPException, Query
@@ -158,7 +159,7 @@ async def api_charge_balance(charge_id):
 async def api_themes_save(
     data: SatsPayThemes,
     wallet: WalletTypeInfo = Depends(require_admin_key),
-    css_id: str = Query(...),
+    css_id: Optional[str] = None,
 ):
 
     if css_id:
