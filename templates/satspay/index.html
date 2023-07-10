@@ -5,15 +5,29 @@
     <q-card>
       <q-card-section>
         {% raw %}
-        <q-btn unelevated color="primary" @click="formDialogCharge.show = true">New charge
+        <q-btn unelevated color="primary" @click="formDialogCharge.show = true"
+          >New charge
         </q-btn>
 
-        <q-btn v-if="admin == 'True'" unelevated color="primary" @click="getThemes();formDialogThemes.show = true">New
-          CSS Theme
+        <q-btn
+          v-if="admin == 'True'"
+          unelevated
+          color="primary"
+          @click="getThemes();formDialogThemes.show = true"
+          >New CSS Theme
         </q-btn>
-        <q-btn v-else disable unelevated color="primary" @click="getThemes();formDialogThemes.show = true">New CSS Theme
-          <q-tooltip>For security reason, custom css is only available to server
-            admins.</q-tooltip></q-btn>
+        <q-btn
+          v-else
+          disable
+          unelevated
+          color="primary"
+          @click="getThemes();formDialogThemes.show = true"
+          >New CSS Theme
+          <q-tooltip
+            >For security reason, custom css is only available to server
+            admins.</q-tooltip
+          ></q-btn
+        >
       </q-card-section>
     </q-card>
 
@@ -25,7 +39,14 @@
           </div>
 
           <div class="col q-pr-lg">
-            <q-input borderless dense debounce="300" v-model="filter" placeholder="Search" class="float-right">
+            <q-input
+              borderless
+              dense
+              debounce="300"
+              v-model="filter"
+              placeholder="Search"
+              class="float-right"
+            >
               <template v-slot:append>
                 <q-icon name="search"></q-icon>
               </template>
@@ -36,15 +57,24 @@
               <q-menu auto-close>
                 <q-list style="min-width: 100px">
                   <q-item clickable>
-                    <q-item-section @click="exportchargeCSV">Export to CSV</q-item-section>
+                    <q-item-section @click="exportchargeCSV"
+                      >Export to CSV</q-item-section
+                    >
                   </q-item>
                 </q-list>
               </q-menu>
             </q-btn>
           </div>
         </div>
-        <q-table flat dense :data="chargeLinks" row-key="id" :columns="chargesTable.columns"
-          :pagination.sync="chargesTable.pagination" :filter="filter">
+        <q-table
+          flat
+          dense
+          :data="chargeLinks"
+          row-key="id"
+          :columns="chargesTable.columns"
+          :pagination.sync="chargesTable.pagination"
+          :filter="filter"
+        >
           <template v-slot:header="props">
             <q-tr :props="props">
               <q-th auto-width></q-th>
@@ -63,32 +93,69 @@
           <template v-slot:body="props">
             <q-tr :props="props">
               <q-td auto-width>
-                <q-btn size="sm" color="accent" round dense @click="props.row.expanded= !props.row.expanded"
-                  :icon="props.row.expanded? 'remove' : 'add'" />
+                <q-btn
+                  size="sm"
+                  color="accent"
+                  round
+                  dense
+                  @click="props.row.expanded= !props.row.expanded"
+                  :icon="props.row.expanded? 'remove' : 'add'"
+                />
               </q-td>
 
               <q-td auto-width>
-                <q-badge v-if="props.row.time_elapsed && props.row.balance < props.row.amount" color="red">
-                  <a class="text-secondary" :href="props.row.displayUrl" target="_blank"
-                    style="color: unset; text-decoration: none">expired</a>
+                <q-badge
+                  v-if="props.row.time_elapsed && props.row.balance < props.row.amount"
+                  color="red"
+                >
+                  <a
+                    class="text-secondary"
+                    :href="props.row.displayUrl"
+                    target="_blank"
+                    style="color: unset; text-decoration: none"
+                    >expired</a
+                  >
                 </q-badge>
 
-                <q-badge v-else-if="props.row.balance >= props.row.amount" color="green">
-                  <a class="text-secondary" :href="props.row.displayUrl" target="_blank"
-                    style="color: unset; text-decoration: none">paid</a>
+                <q-badge
+                  v-else-if="props.row.balance >= props.row.amount"
+                  color="green"
+                >
+                  <a
+                    class="text-secondary"
+                    :href="props.row.displayUrl"
+                    target="_blank"
+                    style="color: unset; text-decoration: none"
+                    >paid</a
+                  >
                 </q-badge>
 
-                <q-badge v-else color="blue"><a class="text-secondary" :href="props.row.displayUrl" target="_blank"
-                    style="color: unset; text-decoration: none">waiting</a>
+                <q-badge v-else color="blue"
+                  ><a
+                    class="text-secondary"
+                    :href="props.row.displayUrl"
+                    target="_blank"
+                    style="color: unset; text-decoration: none"
+                    >waiting</a
+                  >
                 </q-badge>
               </q-td>
               <q-td key="description" :props="props" :class="">
-                <a class="text-secondary" :href="props.row.displayUrl" target="_blank"
-                  style="color: unset; text-decoration: none">{{props.row.description}}</a>
+                <a
+                  class="text-secondary"
+                  :href="props.row.displayUrl"
+                  target="_blank"
+                  style="color: unset; text-decoration: none"
+                  >{{props.row.description}}</a
+                >
               </q-td>
               <q-td key="timeLeft" :props="props" :class="">
                 <div>{{props.row.timeLeft}}</div>
-                <q-linear-progress v-if="props.row.timeLeft" :value="props.row.progress" color="secondary">
+                <q-linear-progress
+                  v-if="props.row.timeLeft"
+                  :value="props.row.progress"
+                  color="secondary"
+                >
                 </q-linear-progress>
               </q-td>
               <q-td key="time to pay" :props="props" :class="">
@@ -106,44 +173,73 @@
                 </div>
               </q-td>
               <q-td key="onchain address" :props="props" :class="">
-                <a class="text-secondary" :href="props.row.displayUrl" target="_blank"
-                  style="color: unset; text-decoration: none">{{props.row.onchainaddress}}</a>
+                <a
+                  class="text-secondary"
+                  :href="props.row.displayUrl"
+                  target="_blank"
+                  style="color: unset; text-decoration: none"
+                  >{{props.row.onchainaddress}}</a
+                >
               </q-td>
             </q-tr>
             <q-tr v-show="props.row.expanded" :props="props">
               <q-td colspan="100%">
-                <div v-if="props.row.onchainwallet" class="row items-center q-mt-md q-mb-lg">
+                <div
+                  v-if="props.row.onchainwallet"
+                  class="row items-center q-mt-md q-mb-lg"
+                >
                   <div class="col-2 q-pr-lg">Onchain Wallet:</div>
                   <div class="col-4 q-pr-lg">
                     {{getOnchainWalletName(props.row.onchainwallet)}}
                   </div>
                 </div>
-                <div v-if="props.row.lnbitswallet" class="row items-center q-mt-md q-mb-lg">
+                <div
+                  v-if="props.row.lnbitswallet"
+                  class="row items-center q-mt-md q-mb-lg"
+                >
                   <div class="col-2 q-pr-lg">LNbits Wallet:</div>
                   <div class="col-4 q-pr-lg">
                     {{getLNbitsWalletName(props.row.lnbitswallet)}}
                   </div>
                 </div>
 
-                <div v-if="props.row.completelink || props.row.completelinktext"
-                  class="row items-center q-mt-md q-mb-lg">
+                <div
+                  v-if="props.row.completelink || props.row.completelinktext"
+                  class="row items-center q-mt-md q-mb-lg"
+                >
                   <div class="col-2 q-pr-lg">Completed Link:</div>
                   <div class="col-4 q-pr-lg">
-                    <a class="text-secondary" :href="props.row.completelink" target="_blank"
-                      style="color: unset; text-decoration: none">{{props.row.completelinktext ||
-                      props.row.completelink}}</a>
+                    <a
+                      class="text-secondary"
+                      :href="props.row.completelink"
+                      target="_blank"
+                      style="color: unset; text-decoration: none"
+                      >{{props.row.completelinktext ||
+                      props.row.completelink}}</a
+                    >
                   </div>
                 </div>
-                <div v-if="props.row.webhook" class="row items-center q-mt-md q-mb-lg">
+                <div
+                  v-if="props.row.webhook"
+                  class="row items-center q-mt-md q-mb-lg"
+                >
                   <div class="col-2 q-pr-lg">Webhook:</div>
                   <div class="col-4 q-pr-lg">
-                    <a class="text-secondary" :href="props.row.webhook" target="_blank"
-                      style="color: unset; text-decoration: none">{{props.row.webhook}}</a>
+                    <a
+                      class="text-secondary"
+                      :href="props.row.webhook"
+                      target="_blank"
+                      style="color: unset; text-decoration: none"
+                      >{{props.row.webhook}}</a
+                    >
                   </div>
                   <div class="col-4 q-pr-lg">
-                    <q-badge v-if="props.row.webhook_message"
-                      @click="showWebhookResponseDialog(props.row.extra.webhook_response)" color="blue"
-                      class="cursor-pointer">
+                    <q-badge
+                      v-if="props.row.webhook_message"
+                      @click="showWebhookResponseDialog(props.row.extra.webhook_response)"
+                      color="blue"
+                      class="cursor-pointer"
+                    >
                       {{props.row.webhook_message }}
                     </q-badge>
                   </div>
@@ -155,13 +251,35 @@
                 <div class="row items-center q-mt-md q-mb-lg">
                   <div class="col-2 q-pr-lg"></div>
                   <div class="col-6 q-pr-lg">
-                    <q-btn unelevated color="gray" outline type="a" :href="props.row.displayUrl" target="_blank"
-                      class="float-left q-mr-lg">Details</q-btn>
-                    <q-btn unelevated color="gray" outline type="a" @click="refreshBalance(props.row)" target="_blank"
-                      class="float-left">Refresh Balance</q-btn>
+                    <q-btn
+                      unelevated
+                      color="gray"
+                      outline
+                      type="a"
+                      :href="props.row.displayUrl"
+                      target="_blank"
+                      class="float-left q-mr-lg"
+                      >Details</q-btn
+                    >
+                    <q-btn
+                      unelevated
+                      color="gray"
+                      outline
+                      type="a"
+                      @click="refreshBalance(props.row)"
+                      target="_blank"
+                      class="float-left"
+                      >Refresh Balance</q-btn
+                    >
                   </div>
                   <div class="col-4 q-pr-lg">
-                    <q-btn unelevated color="pink" icon="cancel" @click="deleteChargeLink(props.row.id)">Delete</q-btn>
+                    <q-btn
+                      unelevated
+                      color="pink"
+                      icon="cancel"
+                      @click="deleteChargeLink(props.row.id)"
+                      >Delete</q-btn
+                    >
                   </div>
                   <div class="col-4"></div>
                   <div class="col-2 q-pr-lg"></div>
@@ -181,8 +299,14 @@
             <h5 class="text-subtitle1 q-my-none">Themes</h5>
           </div>
         </div>
-        <q-table dense flat :data="themeLinks" row-key="id" :columns="customCSSTable.columns"
-          :pagination.sync="customCSSTable.pagination">
+        <q-table
+          dense
+          flat
+          :data="themeLinks"
+          row-key="id"
+          :columns="customCSSTable.columns"
+          :pagination.sync="customCSSTable.pagination"
+        >
           {% raw %}
           <template v-slot:header="props">
             <q-tr :props="props">
@@ -199,11 +323,24 @@
                 {{ col.value }}
               </q-td>
               <q-td auto-width>
-                <q-btn flat dense size="xs" @click="updateformDialog(props.row.css_id)" icon="edit"
-                  color="light-blue"></q-btn>
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="updateformDialog(props.row.css_id)"
+                  icon="edit"
+                  color="light-blue"
+                ></q-btn>
               </q-td>
               <q-td auto-width>
-                <q-btn flat dense size="xs" @click="deleteTheme(props.row.css_id)" icon="cancel" color="pink"></q-btn>
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="deleteTheme(props.row.css_id)"
+                  icon="cancel"
+                  color="pink"
+                ></q-btn>
               </q-td>
             </q-tr>
           </template>
@@ -229,20 +366,39 @@
   <q-dialog v-model="formDialogCharge.show" position="top">
     <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
       <q-form @submit="sendFormDataCharge" class="q-gutter-md">
-        <q-input filled dense v-model.trim="formDialogCharge.data.description" type="text"
-          label="*Description"></q-input>
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialogCharge.data.description"
+          type="text"
+          label="*Description"
+        ></q-input>
 
-        <q-input filled dense v-model.trim="formDialogCharge.data.amount" type="number"
-          label="*Amount (sats)"></q-input>
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialogCharge.data.amount"
+          type="number"
+          label="*Amount (sats)"
+        ></q-input>
 
-        <q-input filled dense v-model.trim="formDialogCharge.data.time" type="number" max="1440"
-          label="*Mins valid for (max 1440)">
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialogCharge.data.time"
+          type="number"
+          max="1440"
+          label="*Mins valid for (max 1440)"
+        >
         </q-input>
 
         <div class="row">
           <div class="col">
             <div v-if="walletLinks.length > 0">
-              <q-checkbox v-model="formDialogCharge.data.onchain" label="Onchain" />
+              <q-checkbox
+                v-model="formDialogCharge.data.onchain"
+                label="Onchain"
+              />
             </div>
             <div v-else>
               <q-checkbox :value="false" label="Onchain" disabled>
@@ -255,41 +411,94 @@
           </div>
           <div class="col">
             <div>
-              <q-checkbox v-model="formDialogCharge.data.lnbits" label="LNbits wallet" />
+              <q-checkbox
+                v-model="formDialogCharge.data.lnbits"
+                label="LNbits wallet"
+              />
             </div>
           </div>
         </div>
 
         <div v-if="formDialogCharge.data.onchain">
-          <q-select filled dense emit-value v-model="onchainwallet" :options="walletLinks" label="Onchain Wallet" />
+          <q-select
+            filled
+            dense
+            emit-value
+            v-model="onchainwallet"
+            :options="walletLinks"
+            label="Onchain Wallet"
+          />
         </div>
 
-        <q-select v-if="formDialogCharge.data.lnbits" filled dense emit-value
-          v-model="formDialogCharge.data.lnbitswallet" :options="g.user.walletOptions" label="Wallet *">
+        <q-select
+          v-if="formDialogCharge.data.lnbits"
+          filled
+          dense
+          emit-value
+          v-model="formDialogCharge.data.lnbitswallet"
+          :options="g.user.walletOptions"
+          label="Wallet *"
+        >
         </q-select>
-        <q-toggle v-model="showAdvanced" label="Show advanced options"></q-toggle>
+        <q-toggle
+          v-model="showAdvanced"
+          label="Show advanced options"
+        ></q-toggle>
         <div v-if="showAdvanced" class="row">
           <div class="col">
-            <q-input filled dense v-model.trim="formDialogCharge.data.webhook" type="url"
-              label="Webhook (URL to send transaction data to once paid)" class="q-mt-lg">
+            <q-input
+              filled
+              dense
+              v-model.trim="formDialogCharge.data.webhook"
+              type="url"
+              label="Webhook (URL to send transaction data to once paid)"
+              class="q-mt-lg"
+            >
             </q-input>
 
-            <q-input filled dense v-model.trim="formDialogCharge.data.completelink" type="url"
-              label="Completed button URL" class="q-mt-lg">
+            <q-input
+              filled
+              dense
+              v-model.trim="formDialogCharge.data.completelink"
+              type="url"
+              label="Completed button URL"
+              class="q-mt-lg"
+            >
             </q-input>
-            <q-input filled dense v-model.trim="formDialogCharge.data.completelinktext" type="text"
-              label="Completed button text (ie 'Back to merchant')" class="q-mt-lg">
+            <q-input
+              filled
+              dense
+              v-model.trim="formDialogCharge.data.completelinktext"
+              type="text"
+              label="Completed button text (ie 'Back to merchant')"
+              class="q-mt-lg"
+            >
             </q-input>
-            <q-select filled dense emit-value v-model="formDialogCharge.data.custom_css" :options="themeOptions"
-              label="Custom CSS theme (optional)" class="q-mt-lg">
+            <q-select
+              filled
+              dense
+              emit-value
+              v-model="formDialogCharge.data.custom_css"
+              :options="themeOptions"
+              label="Custom CSS theme (optional)"
+              class="q-mt-lg"
+            >
             </q-select>
           </div>
         </div>
         <div class="row q-mt-lg">
-          <q-btn unelevated color="primary" :disable="
+          <q-btn
+            unelevated
+            color="primary"
+            :disable="
                 formDialogCharge.data.time == null ||
-                formDialogCharge.data.amount == null" type="submit">Create Charge</q-btn>
-          <q-btn @click="cancelCharge" flat color="grey" class="q-ml-auto">Cancel</q-btn>
+                formDialogCharge.data.amount == null"
+            type="submit"
+            >Create Charge</q-btn
+          >
+          <q-btn @click="cancelCharge" flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
         </div>
       </q-form>
     </q-card>
@@ -298,13 +507,35 @@
   <q-dialog v-model="formDialogThemes.show" position="top">
     <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
       <q-form @submit="sendFormDataThemes" class="q-gutter-md">
-        <q-input filled dense v-model.trim="formDialogThemes.data.title" type="text" label="*Title"></q-input>
-        <q-input filled dense v-model.trim="formDialogThemes.data.custom_css" type="textarea" label="Custom CSS">
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialogThemes.data.title"
+          type="text"
+          label="*Title"
+        ></q-input>
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialogThemes.data.custom_css"
+          type="textarea"
+          label="Custom CSS"
+        >
         </q-input>
         <div class="row q-mt-lg">
-          <q-btn v-if="formDialogThemes.data.css_id" unelevated color="primary" type="submit">Update CSS theme</q-btn>
-          <q-btn v-else unelevated color="primary" type="submit">Save CSS theme</q-btn>
-          <q-btn @click="cancelThemes" flat color="grey" class="q-ml-auto">Cancel</q-btn>
+          <q-btn
+            v-if="formDialogThemes.data.css_id"
+            unelevated
+            color="primary"
+            type="submit"
+            >Update CSS theme</q-btn
+          >
+          <q-btn v-else unelevated color="primary" type="submit"
+            >Save CSS theme</q-btn
+          >
+          <q-btn @click="cancelThemes" flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
         </div>
       </q-form>
     </q-card>
@@ -312,7 +543,14 @@
 
   <q-dialog v-model="showWebhookResponse" position="top">
     <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
-      <q-input filled dense readonly v-model.trim="webhookResponse" type="textarea" label="Response"></q-input>
+      <q-input
+        filled
+        dense
+        readonly
+        v-model.trim="webhookResponse"
+        type="textarea"
+        label="Response"
+      ></q-input>
 
       <div class="row q-mt-lg">
         <q-btn flat v-close-popup color="grey" class="q-ml-auto">Close</q-btn>
@@ -485,7 +723,7 @@
 
       getWalletLinks: async function () {
         try {
-          const { data } = await LNbits.api.request(
+          const {data} = await LNbits.api.request(
             'GET',
             `/watchonly/api/v1/wallet?network=${this.mempool.network}`,
             this.g.user.wallets[0].inkey
@@ -501,7 +739,7 @@
 
       getWalletConfig: async function () {
         try {
-          const { data } = await LNbits.api.request(
+          const {data} = await LNbits.api.request(
             'GET',
             '/watchonly/api/v1/config',
             this.g.user.wallets[0].inkey
@@ -527,7 +765,7 @@
 
       getCharges: async function () {
         try {
-          const { data } = await LNbits.api.request(
+          const {data} = await LNbits.api.request(
             'GET',
             '/satspay/api/v1/charges',
             this.g.user.wallets[0].inkey
@@ -545,7 +783,7 @@
 
       getThemes: async function () {
         try {
-          const { data } = await LNbits.api.request(
+          const {data} = await LNbits.api.request(
             'GET',
             '/satspay/api/v1/themes',
             this.g.user.wallets[0].inkey
@@ -602,21 +840,21 @@
       },
       refreshBalance: async function (charge) {
         try {
-          const { data } = await LNbits.api.request(
+          const {data} = await LNbits.api.request(
             'GET',
             '/satspay/api/v1/charge/balance/' + charge.id,
             'filla'
           )
           charge.balance = data.balance
-        } catch (error) { }
+        } catch (error) {}
       },
       rescanOnchainAddresses: async function () {
         if (this.rescanning) return
         this.rescanning = true
 
         const {
-          bitcoin: { addresses: addressesAPI }
-        } = mempoolJS({ hostname: this.mempool.hostname })
+          bitcoin: {addresses: addressesAPI}
+        } = mempoolJS({hostname: this.mempool.hostname})
 
         try {
           const onchainActiveCharges = this.chargeLinks.filter(
@@ -644,7 +882,7 @@
         }
       },
       updateformDialog: function (themeId) {
-        const theme = _.findWhere(this.themeLinks, { css_id: themeId })
+        const theme = _.findWhere(this.themeLinks, {css_id: themeId})
         this.formDialogThemes.data.css_id = theme.css_id
         this.formDialogThemes.data.title = theme.title
         this.formDialogThemes.data.custom_css = theme.custom_css
@@ -683,7 +921,7 @@
       },
 
       deleteTheme: function (themeId) {
-        const theme = _.findWhere(this.themeLinks, { id: themeId })
+        const theme = _.findWhere(this.themeLinks, {id: themeId})
         LNbits.utils
           .confirmDialog('Are you sure you want to delete this theme?')
           .onOk(async () => {
@@ -726,7 +964,7 @@
       },
 
       deleteChargeLink: function (chargeId) {
-        const link = _.findWhere(this.chargeLinks, { id: chargeId })
+        const link = _.findWhere(this.chargeLinks, {id: chargeId})
         LNbits.utils
           .confirmDialog('Are you sure you want to delete this pay link?')
           .onOk(async () => {
