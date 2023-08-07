@@ -804,7 +804,7 @@
       },
 
       sendFormDataThemes: function () {
-        const wallet = this.g.user.wallets[0].inkey
+        const wallet = this.g.user.wallets[0].adminkey
         const data = this.formDialogThemes.data
         this.createTheme(wallet, data)
       },
