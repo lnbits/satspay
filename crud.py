@@ -131,10 +131,13 @@ async def check_address_balance(charge_id: str) -> Optional[Charges]:
             except Exception as e:
                 logger.warning(e)
         if charge.lnbitswallet:
-            invoice_status = await api_payment(charge.payment_hash)
+            try:
+                invoice_status = await api_payment(charge.payment_hash)
 
-            if invoice_status["paid"]:
-                return await update_charge(charge_id=charge_id, balance=charge.amount)
+                if invoice_status["paid"]:
+                    return await update_charge(charge_id=charge_id, balance=charge.amount)
+            except Exception as e:
+                logger.warning(e)
     return await get_charge(charge_id)
 
 
