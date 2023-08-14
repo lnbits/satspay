@@ -62,3 +62,13 @@ async def m004_add_custom_css_to_charges(db):
     """
 
     await db.execute("ALTER TABLE satspay.charges ADD COLUMN custom_css TEXT;")
+
+
+async def m005_add_charge_last_accessed_at_column(db):
+    """
+    Add 'last_accessed_at' column for storing the last updated time
+    """
+    await db.execute(
+        f"ALTER TABLE satspay.charges ADD COLUMN last_accessed_at TIMESTAMP;"
+    )
+

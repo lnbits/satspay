@@ -48,6 +48,7 @@ class Charges(BaseModel):
     amount: int
     balance: int
     timestamp: int
+    last_accessed_at: Optional[int] = 0
 
     @classmethod
     def from_row(cls, row: Row) -> "Charges":
@@ -55,10 +56,9 @@ class Charges(BaseModel):
 
     @property
     def time_left(self):
-        now = datetime.utcnow().timestamp()
-        start = datetime.fromtimestamp(self.timestamp)
-        expiration = (start + timedelta(minutes=self.time)).timestamp()
-        return (expiration - now) / 60
+        life_in_seconds = self.last_accessed_at - self.timestamp
+        life_left_in_secods = self.time * 60 - life_in_seconds
+        return life_left_in_secods / 60
 
     @property
     def time_elapsed(self):

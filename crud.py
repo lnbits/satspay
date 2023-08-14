@@ -33,7 +33,7 @@ async def create_charge(
             amount=data.amount,
             memo=data.description,
             extra={"tag": "charge"},
-            expiry=int(data.time * 60), # convert minutes to seconds
+            expiry=int(data.time * 60),  # convert minutes to seconds
         )
     else:
         payment_hash = None
@@ -89,16 +89,24 @@ async def update_charge(charge_id: str, **kwargs) -> Optional[Charges]:
     await db.execute(
         f"UPDATE satspay.charges SET {q} WHERE id = ?", (*kwargs.values(), charge_id)
     )
-    row = await db.fetchone("SELECT * FROM satspay.charges WHERE id = ?", (charge_id,))
-    return Charges.from_row(row) if row else None
+    return await get_charge(charge_id)
 
 
 async def get_charge(charge_id: str) -> Optional[Charges]:
+    await db.execute(
+        f"UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE id = ?",
+        (charge_id,),
+    )
+
     row = await db.fetchone("SELECT * FROM satspay.charges WHERE id = ?", (charge_id,))
     return Charges.from_row(row) if row else None
 
 
 async def get_charges(user: str) -> List[Charges]:
+    await db.execute(
+        f"""UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE "user"  = ?""",
+        (user,),
+    )
     rows = await db.fetchall(
         """SELECT * FROM satspay.charges WHERE "user" = ? ORDER BY "timestamp" DESC """,
         (user,),
