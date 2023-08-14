@@ -27,7 +27,7 @@ from .crud import (
     update_charge,
 )
 from .helpers import call_webhook, fetch_onchain_config, public_charge
-from .models import CreateCharge, SatsPayThemes, WalletAccountConfig
+from .models import CreateCharge, SatsPayThemes
 
 
 @satspay_ext.post("/api/v1/charge")
