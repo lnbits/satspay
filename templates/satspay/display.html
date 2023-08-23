@@ -20,7 +20,7 @@
           <div
             color="white"
             style="background-color: grey; height: 30px; padding: 5px"
-            v-else-if="charge.paid"
+            v-else-if="chargePaid"
           >
             Charge paid
           </div>
@@ -159,13 +159,13 @@
         <div class="row items-center q-mt-sm">
           <div class="col-md-2 col-sm-0"></div>
           <div class="col-md-8 col-sm-12">
-            <div v-if="!charge.timeLeft && !charge.paid">
+            <div v-if="!charge.timeLeft && !chargePaid">
               <q-icon
                 name="block"
                 style="color: #ccc; font-size: 21.4em"
               ></q-icon>
             </div>
-            <div v-else-if="charge.paid">
+            <div v-else-if="chargePaid">
               <q-icon
                 name="check"
                 style="color: green; font-size: 21.4em"
@@ -221,7 +221,7 @@
     </q-card>
     <q-card class="q-pa-lg" v-if="onbtc">
       <q-card-section class="q-pa-none">
-        <div v-if="charge.timeLeft && !charge.paid" class="row items-center">
+        <div v-if="charge.timeLeft && !chargePaid" class="row items-center">
           <div class="col text-center">
             <a
               class="text-secondary"
@@ -238,13 +238,13 @@
         <div class="row items-center q-mt-md">
           <div class="col-md-2 col-sm-0"></div>
           <div class="col-md-8 col-sm-12 text-center">
-            <div v-if="!charge.timeLeft && !charge.paid">
+            <div v-if="!charge.timeLeft && !chargePaid">
               <q-icon
                 name="block"
                 style="color: #ccc; font-size: 21.4em"
               ></q-icon>
             </div>
-            <div v-else-if="charge.paid">
+            <div v-else-if="chargePaid">
               <q-icon
                 name="check"
                 style="color: green; font-size: 21.4em"
@@ -349,6 +349,12 @@
           hostname += '/testnet'
         }
         return hostname
+      },
+      chargePaid() {
+        return (
+          this.charge.balance + this.pendingFunds >= this.charge.amount ||
+          this.charge.paid
+        )
       }
     },
     methods: {
@@ -371,7 +377,8 @@
         const {
           bitcoin: {addresses: addressesAPI}
         } = mempoolJS({
-          hostname: new URL(this.mempoolEndpoint).hostname
+          hostname: new URL(this.mempoolEndpoint).hostname,
+          network: this.network.toLowerCase()
         })
 
         try {
