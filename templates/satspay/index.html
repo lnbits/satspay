@@ -852,6 +852,7 @@
         if (this.rescanning) return
         this.rescanning = true
 
+        // is there a way to change network param per address? it fails for testnet
         const {
           bitcoin: {addresses: addressesAPI}
         } = mempoolJS({hostname: this.mempool.hostname})
