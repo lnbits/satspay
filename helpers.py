@@ -17,6 +17,7 @@ def public_charge(charge: Charges):
         "payment_hash": charge.payment_hash,
         "time": charge.time,
         "amount": charge.amount,
+        "zeroconf": charge.zeroconf,
         "balance": charge.balance,
         "paid": charge.paid,
         "timestamp": charge.timestamp,
@@ -25,7 +26,8 @@ def public_charge(charge: Charges):
         "custom_css": charge.custom_css,
     }
 
-    if charge.paid:
+    if charge.paid or charge.zeroconf:
+        c["webhook"] = charge.webhook
         c["completelink"] = charge.completelink
         c["completelinktext"] = charge.completelinktext
 
@@ -62,7 +64,9 @@ async def fetch_onchain_balance(charge: Charges):
     assert charge.onchainaddress
     async with httpx.AsyncClient() as client:
         r = await client.get(endpoint + "/api/address/" + charge.onchainaddress)
-        return r.json()["chain_stats"]["funded_txo_sum"]
+        return r.json()["mempool_stats" if charge.zeroconf else "chain_stats"][
+            "funded_txo_sum"
+        ]
 
 
 async def fetch_onchain_config(
