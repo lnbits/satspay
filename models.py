@@ -17,7 +17,7 @@ class CreateCharge(BaseModel):
     description: str = Query(...)
     webhook: str = Query(None)
     completelink: str = Query(None)
-    completelinktext: str = Query(None)
+    completelinktext: str = Query("Back to Merchant")
     custom_css: Optional[str]
     time: int = Query(..., ge=1)
     amount: int = Query(..., ge=1)

@@ -32,7 +32,7 @@ async def create_charge(
             wallet_id=data.lnbitswallet,
             amount=data.amount,
             memo=data.description,
-            extra={"tag": "charge"},
+            extra={"tag": "charge", "charge": charge_id},
             expiry=int(data.time * 60),  # convert minutes to seconds
         )
     else:
