@@ -265,7 +265,6 @@
             this.timerInterval = setInterval(() => {
               if (this.timer >= 100) {
                 clearInterval(this.timerInterval)
-                console.debug('redirecting')
                 window.location.href = this.charge.completelink
               }
               this.timer += 0.25
