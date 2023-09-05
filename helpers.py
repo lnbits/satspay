@@ -26,7 +26,7 @@ def public_charge(charge: Charges):
         "custom_css": charge.custom_css,
     }
 
-    if charge.paid or charge.zeroconf:
+    if charge.paid:
         c["webhook"] = charge.webhook
         c["completelink"] = charge.completelink
         c["completelinktext"] = charge.completelinktext
