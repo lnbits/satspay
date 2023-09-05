@@ -867,20 +867,25 @@
         if (this.rescanning) return
         this.rescanning = true
 
-        // is there a way to change network param per address? it fails for testnet
         const {
           bitcoin: {addresses: addressesAPI}
         } = mempoolJS({hostname: this.mempool.hostname})
+        const {
+          bitcoin: {addresses: addressesTestAPI}
+        } = mempoolJS({hostname: this.mempool.hostname + '/testnet'})
 
         try {
           const onchainActiveCharges = this.chargeLinks.filter(
             c => c.onchainaddress && !c.paid && !c.time_elapsed
           )
+
           for (const charge of onchainActiveCharges) {
-            const fn = async () =>
-              addressesAPI.getAddressTxsUtxo({
+            const fn = async () =>{
+              const api = charge.extra?.network === 'Testnet' ? addressesTestAPI : addressesAPI
+              return api.getAddressTxsUtxo({
                 address: charge.onchainaddress
               })
+            }
 
             const utxos = await retryWithDelay(fn)
             const newBalance = utxos.reduce((t, u) => t + u.value, 0)
