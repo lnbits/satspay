@@ -27,7 +27,6 @@ def public_charge(charge: Charges):
     }
 
     if charge.paid:
-        c["webhook"] = charge.webhook
         c["completelink"] = charge.completelink
         c["completelinktext"] = charge.completelinktext
 
