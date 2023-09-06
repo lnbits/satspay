@@ -126,9 +126,17 @@ async def check_address_balance(charge_id: str) -> Optional[Charges]:
     if not charge.paid:
         if charge.onchainaddress:
             try:
-                respAmount = await fetch_onchain_balance(charge)
+                balance = await fetch_onchain_balance(charge)
+                respAmount = int(balance["confirmed"])
+                if charge.zeroconf:
+                    respAmount += int(balance["unconfirmed"])
+
                 if respAmount > charge.balance:
-                    await update_charge(charge_id=charge_id, balance=respAmount)
+                    extra = json.loads(charge.extra)
+                    extra["pending"] = int(balance["unconfirmed"])
+                    await update_charge(
+                        charge_id=charge_id, balance=respAmount, extra=json.dumps(extra)
+                    )
             except Exception as e:
                 logger.warning(e)
         if charge.lnbitswallet:

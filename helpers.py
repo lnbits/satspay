@@ -63,9 +63,11 @@ async def fetch_onchain_balance(charge: Charges):
     assert charge.onchainaddress
     async with httpx.AsyncClient() as client:
         r = await client.get(endpoint + "/api/address/" + charge.onchainaddress)
-        return r.json()["mempool_stats" if charge.zeroconf else "chain_stats"][
-            "funded_txo_sum"
-        ]
+        resp = r.json()
+        return {
+            "confirmed": resp["chain_stats"]["funded_txo_sum"],
+            "unconfirmed": resp["mempool_stats"]["funded_txo_sum"],
+        }
 
 
 async def fetch_onchain_config(
