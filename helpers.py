@@ -19,6 +19,7 @@ def public_charge(charge: Charges):
         "amount": charge.amount,
         "zeroconf": charge.zeroconf,
         "balance": charge.balance,
+        "pending": charge.pending,
         "paid": charge.paid,
         "timestamp": charge.timestamp,
         "time_elapsed": charge.time_elapsed,

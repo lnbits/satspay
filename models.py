@@ -49,6 +49,7 @@ class Charges(BaseModel):
     amount: int
     zeroconf: bool
     balance: int
+    pending: Optional[int] = 0
     timestamp: int
     last_accessed_at: Optional[int] = 0
 

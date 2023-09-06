@@ -127,15 +127,16 @@ async def check_address_balance(charge_id: str) -> Optional[Charges]:
         if charge.onchainaddress:
             try:
                 balance = await fetch_onchain_balance(charge)
-                respAmount = int(balance["confirmed"])
-                if charge.zeroconf:
-                    respAmount += int(balance["unconfirmed"])
+                confirmed = int(balance["confirmed"])
+                unconfirmed = int(balance["unconfirmed"])
+                if confirmed != charge.balance or unconfirmed != charge.pending:
+                    if charge.zeroconf:
+                        confirmed += unconfirmed
 
-                if respAmount > charge.balance:
-                    extra = json.loads(charge.extra)
-                    extra["pending"] = int(balance["unconfirmed"])
                     await update_charge(
-                        charge_id=charge_id, balance=respAmount, extra=json.dumps(extra)
+                        charge_id=charge_id,
+                        balance=confirmed,
+                        pending=unconfirmed,
                     )
             except Exception as e:
                 logger.warning(e)
