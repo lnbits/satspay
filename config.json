@@ -2,5 +2,6 @@
   "name": "SatsPay Server",
   "short_description": "Create onchain and LN charges",
   "tile": "/satspay/static/image/satspay.png",
-  "contributors": ["arcbtc"]
+  "contributors": ["arcbtc"],
+  "min_lnbits_version": "0.XX.0"
 }
