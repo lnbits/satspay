@@ -3,5 +3,5 @@
   "short_description": "Create onchain and LN charges",
   "tile": "/satspay/static/image/satspay.png",
   "contributors": ["arcbtc"],
-  "min_lnbits_version": "0.XX.0"
+  "min_lnbits_version": "0.11.0"
 }
