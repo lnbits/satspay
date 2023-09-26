@@ -427,7 +427,20 @@
             v-model="onchainwallet"
             :options="walletLinks"
             label="Onchain Wallet"
-          />
+          ></q-select>
+          <q-item tag="label" v-ripple>
+            <q-item-section avatar top>
+              <q-checkbox v-model="formDialogCharge.data.zeroconf" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Zeroconf (0-conf) payments</q-item-label>
+              <q-item-label caption>
+                Allow payments with 0 confirmations. This is less secure but
+                faster. Payments will be marked paid once they are seen on the
+                mempool.
+              </q-item-label>
+            </q-item-section>
+          </q-item>
         </div>
 
         <q-select
@@ -686,6 +699,7 @@
           data: {
             onchain: false,
             onchainwallet: '',
+            zeroconf: false,
             lnbits: false,
             description: '',
             custom_css: '',
@@ -712,6 +726,7 @@
         this.formDialogCharge.data.description = ''
         this.formDialogCharge.data.onchain = false
         this.formDialogCharge.data.onchainwallet = ''
+        this.formDialogCharge.data.zeroconf = false
         this.formDialogCharge.data.lnbitswallet = ''
         this.formDialogCharge.data.time = null
         this.formDialogCharge.data.amount = null
@@ -855,16 +870,22 @@
         const {
           bitcoin: {addresses: addressesAPI}
         } = mempoolJS({hostname: this.mempool.hostname})
+        const {
+          bitcoin: {addresses: addressesTestAPI}
+        } = mempoolJS({hostname: this.mempool.hostname + '/testnet'})
 
         try {
           const onchainActiveCharges = this.chargeLinks.filter(
             c => c.onchainaddress && !c.paid && !c.time_elapsed
           )
+
           for (const charge of onchainActiveCharges) {
-            const fn = async () =>
-              addressesAPI.getAddressTxsUtxo({
+            const fn = async () =>{
+              const api = charge.extra?.network === 'Testnet' ? addressesTestAPI : addressesAPI
+              return api.getAddressTxsUtxo({
                 address: charge.onchainaddress
               })
+            }
 
             const utxos = await retryWithDelay(fn)
             const newBalance = utxos.reduce((t, u) => t + u.value, 0)
@@ -948,11 +969,11 @@
             wallet,
             data
           )
-
           this.chargeLinks.unshift(mapCharge(resp.data))
           this.formDialogCharge.show = false
           this.formDialogCharge.data = {
             onchain: false,
+            zeroconf: false,
             lnbits: false,
             description: '',
             time: null,

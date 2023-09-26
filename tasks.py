@@ -21,13 +21,15 @@ async def wait_for_paid_invoices():
 
 
 async def on_invoice_paid(payment: Payment) -> None:
-
     if payment.extra.get("tag") != "charge":
         # not a charge invoice
         return
 
-    assert payment.memo
-    charge = await get_charge(payment.memo)
+    charge_id = payment.extra.get("charge")
+    if not charge_id:
+        return
+
+    charge = await get_charge(charge_id)
     if not charge:
         logger.error("this should never happen", payment)
         return

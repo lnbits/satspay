@@ -17,10 +17,11 @@ class CreateCharge(BaseModel):
     description: str = Query(...)
     webhook: str = Query(None)
     completelink: str = Query(None)
-    completelinktext: str = Query(None)
+    completelinktext: str = Query("Back to Merchant")
     custom_css: Optional[str]
     time: int = Query(..., ge=1)
     amount: int = Query(..., ge=1)
+    zeroconf: bool = Query(False)
     extra: str = DEFAULT_MEMPOOL_CONFIG
 
 
@@ -46,7 +47,9 @@ class Charges(BaseModel):
     extra: str = DEFAULT_MEMPOOL_CONFIG
     time: int
     amount: int
+    zeroconf: bool
     balance: int
+    pending: Optional[int] = 0
     timestamp: int
     last_accessed_at: Optional[int] = 0
 

@@ -17,7 +17,9 @@ def public_charge(charge: Charges):
         "payment_hash": charge.payment_hash,
         "time": charge.time,
         "amount": charge.amount,
+        "zeroconf": charge.zeroconf,
         "balance": charge.balance,
+        "pending": charge.pending,
         "paid": charge.paid,
         "timestamp": charge.timestamp,
         "time_elapsed": charge.time_elapsed,
@@ -62,7 +64,11 @@ async def fetch_onchain_balance(charge: Charges):
     assert charge.onchainaddress
     async with httpx.AsyncClient() as client:
         r = await client.get(endpoint + "/api/address/" + charge.onchainaddress)
-        return r.json()["chain_stats"]["funded_txo_sum"]
+        resp = r.json()
+        return {
+            "confirmed": resp["chain_stats"]["funded_txo_sum"],
+            "unconfirmed": resp["mempool_stats"]["funded_txo_sum"],
+        }
 
 
 async def fetch_onchain_config(

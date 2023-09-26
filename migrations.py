@@ -1,3 +1,6 @@
+from sqlalchemy.exc import OperationalError
+
+
 async def m001_initial(db):
     """
     Initial wallet table.
@@ -72,3 +75,21 @@ async def m005_add_charge_last_accessed_at_column(db):
         f"ALTER TABLE satspay.charges ADD COLUMN last_accessed_at TIMESTAMP;"
     )
 
+
+async def m006_add_zeroconf_column(db):
+    """
+    Add 'zeroconf' column for allowing zero confirmation payments
+    """
+    try:
+        await db.execute(
+            f"ALTER TABLE satspay.charges ADD COLUMN zeroconf BOOLEAN NOT NULL DEFAULT FALSE;"
+        )
+
+        await db.execute(
+            """
+            UPDATE satspay.charges
+            SET zeroconf = FALSE
+            """
+        )
+    except OperationalError:
+        pass

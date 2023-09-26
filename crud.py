@@ -32,7 +32,7 @@ async def create_charge(
             wallet_id=data.lnbitswallet,
             amount=data.amount,
             memo=data.description,
-            extra={"tag": "charge"},
+            extra={"tag": "charge", "charge": charge_id},
             expiry=int(data.time * 60),  # convert minutes to seconds
         )
     else:
@@ -54,11 +54,12 @@ async def create_charge(
             completelinktext,
             time,
             amount,
+            zeroconf,
             balance,
             extra,
             custom_css
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             charge_id,
@@ -74,6 +75,7 @@ async def create_charge(
             data.completelinktext,
             data.time,
             data.amount,
+            data.zeroconf,
             0,
             data.extra,
             data.custom_css,
@@ -121,13 +123,21 @@ async def delete_charge(charge_id: str) -> None:
 async def check_address_balance(charge_id: str) -> Optional[Charges]:
     charge = await get_charge(charge_id)
     assert charge
-
     if not charge.paid:
         if charge.onchainaddress:
             try:
-                respAmount = await fetch_onchain_balance(charge)
-                if respAmount > charge.balance:
-                    await update_charge(charge_id=charge_id, balance=respAmount)
+                balance = await fetch_onchain_balance(charge)
+                confirmed = int(balance["confirmed"])
+                unconfirmed = int(balance["unconfirmed"])
+                if confirmed != charge.balance or unconfirmed != charge.pending:
+                    if charge.zeroconf:
+                        confirmed += unconfirmed
+
+                    await update_charge(
+                        charge_id=charge_id,
+                        balance=confirmed,
+                        pending=unconfirmed,
+                    )
             except Exception as e:
                 logger.warning(e)
         if charge.lnbitswallet:
@@ -135,7 +145,9 @@ async def check_address_balance(charge_id: str) -> Optional[Charges]:
                 invoice_status = await api_payment(charge.payment_hash)
 
                 if invoice_status["paid"]:
-                    return await update_charge(charge_id=charge_id, balance=charge.amount)
+                    return await update_charge(
+                        charge_id=charge_id, balance=charge.amount
+                    )
             except Exception as e:
                 logger.warning(e)
     return await get_charge(charge_id)
