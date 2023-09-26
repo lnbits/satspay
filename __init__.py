@@ -2,7 +2,6 @@ import asyncio
 from typing import List
 
 from fastapi import APIRouter
-from fastapi.staticfiles import StaticFiles
 
 from lnbits.db import Database
 from lnbits.helpers import template_renderer
@@ -17,14 +16,13 @@ satspay_ext: APIRouter = APIRouter(prefix="/satspay", tags=["satspay"])
 satspay_static_files = [
     {
         "path": "/satspay/static",
-        "app": StaticFiles(directory="lnbits/extensions/satspay/static"),
         "name": "satspay_static",
     }
 ]
 
 
 def satspay_renderer():
-    return template_renderer(["lnbits/extensions/satspay/templates"])
+    return template_renderer(["satspay/templates"])
 
 
 from .tasks import wait_for_paid_invoices
