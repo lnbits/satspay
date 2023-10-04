@@ -93,3 +93,22 @@ async def m006_add_zeroconf_column(db):
         )
     except OperationalError:
         pass
+
+
+async def m007_add_pending_column(db):
+    """
+    Add 'pending' column for storing the pending amount
+    """
+    try:
+        await db.execute(
+            f"ALTER TABLE satspay.charges ADD COLUMN pending {db.big_int} NOT NULL DEFAULT 0;"
+        )
+
+        await db.execute(
+            """
+            UPDATE satspay.charges
+            SET pending = 0
+            """
+        )
+    except OperationalError:
+        pass
