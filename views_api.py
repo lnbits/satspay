@@ -161,7 +161,6 @@ async def api_themes_save(
     wallet: WalletTypeInfo = Depends(require_admin_key),
     css_id: Optional[str] = None,
 ):
-
     if css_id:
         theme = await save_theme(css_id=css_id, data=data)
     else:
