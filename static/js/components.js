@@ -3,53 +3,61 @@ Vue.component(VueQrcode.name, VueQrcode)
 Vue.component('satspay-paid', {
   props: ['charge', 'timer'],
   template: `
-    <div class="col-sm-10 col-lg-8">
-        <q-icon name="check" style="color: green; font-size: 21.4em" class="fit"></q-icon>
-        <div class="row text-center q-mt-lg">
-        <div class="col text-center">
-            <q-btn outline v-if="charge.completelink" :loading="charge.paid" :percentage="timer" type="a"
-            :href="charge.completelink" :label="charge.completelinktext">{%raw%}<template v-slot:loading>
-                {{charge.completelinktext}}
-            </template>{%endraw%}</q-btn>
-            <p v-if="charge.completelink" class="q-pt-md">Redirecting after 5 seconds</p>
-        </div>
-        </div>
+  <div>
+    <q-icon
+      name="check"
+      style="color: green; font-size: 21.4em"
+      class="fit"
+    ></q-icon>
+    <div class="row text-center q-mt-lg">
+      <div class="col text-center">
+        <q-btn
+          outline
+          v-if="charge.completelink"
+          :loading="charge.paid"
+          :percentage="timer"
+          type="a"
+          :href="charge.completelink"
+          :label="charge.completelinktext"
+          >{%raw%}<template v-slot:loading> {{charge.completelinktext}} </template
+          >{%endraw%}</q-btn
+        >
+        <p v-if="charge.completelink" class="q-pt-md">
+          Redirecting after 5 seconds
+        </p>
+      </div>
     </div>
-    `
+  </div>`
 })
 
 Vue.component('satspay-show-qr', {
-  props: ['charge', 'tab', 'value', 'href'],
+  props: ['charge-amount', 'type', 'value', 'href'],
   template: `
-    <div class="col-sm-10 col-lg-8">
-        <div class="row justify-center q-mb-sm">
-            <div class="col text-center">
-                <span v-if="tab == 'btc'" class="text-subtitle2">Send
-                <span v-text="charge.amount"></span>
-                sats to this onchain address</span>
-                <span v-if="tab == 'ln'" class="text-subtitle2">Pay this lightning-network invoice:</span>
-                <span v-if="tab == 'uqr'" class="text-subtitle2">Scan QR with a wallet supporting BIP21:</span>
-            </div>
-        </div>
-        <div class="row justify-center q-mb-sm">
-        <div class="col-all">
-        <a class="text-secondary" :href="href">
-            <q-responsive :ratio="1" class="q-mx-md">
-            <lnbits-qrcode
-                :value="value"
-            ></lnbits-qrcode>
-            </q-responsive>
-        </a>
-        </div>
-        
-        </div>
-        <div class="row items-center q-mt-lg">
-            <div class="col text-center">
-            <q-btn outline color="grey" @click="copyText(value)">Copy address</q-btn>
-            </div>
-        </div>
+  <div>
+    <div class="row justify-center q-mb-sm">
+      <div class="col text-center">
+        <span v-if="type == 'btc'" class="text-subtitle2">Send
+          <span v-text="chargeAmount"></span>
+          sats to this onchain address</span>
+        <span v-if="type == 'ln'" class="text-subtitle2">Pay this lightning-network invoice:</span>
+        <span v-if="type == 'uqr'" class="text-subtitle2">Scan QR with a wallet supporting BIP21:</span>
+      </div>
     </div>
-    `
+    <div class="row justify-center q-mb-sm">
+      <div class="col-all">
+        <a class="text-secondary" :href="href">
+          <q-responsive :ratio="1" class="q-mx-md">
+            <lnbits-qrcode :value="value"></lnbits-qrcode>
+          </q-responsive>
+        </a>
+      </div>
+    </div>
+    <div class="row items-center q-mt-lg">
+      <div class="col text-center">
+        <q-btn outline color="grey" @click="copyText(value)">Copy address</q-btn>
+      </div>
+    </div>
+  </div>`
 })
 
 Vue.component('satspay-time-elapsed', {
@@ -61,27 +69,21 @@ Vue.component('satspay-time-elapsed', {
     }
   },
   template: `
-    <div class="text-center">
-      <q-linear-progress size="30px" :value="charge.progress" :color="barColor">
-          <div class="absolute-full flex flex-center text-white text-subtitle2">
-          <span v-if="+charge.timeLeft <= 0 || charge.paid">{{barText}}</span>
-          <div v-else class="full-width">
-            <span class="q-ml-md" style="position: absolute; left: 0">
-            <q-spinner          
-              size="1em"
-              class="q-mr-xs"
-            ></q-spinner>
-              {{barText}}
-            </span>
-            <span>{{charge.timeLeft}}</span>
-          </div>
-          
-          </div>
-      </q-linear-progress>
-    </div>
-    `,
+  <div class="text-center">
+    <q-linear-progress size="30px" :value="charge.progress" :color="barColor">
+      <div class="absolute-full flex flex-center text-white text-subtitle2">
+        <span v-if="+charge.timeLeft <= 0 || charge.paid">{{barText}}</span>
+        <div v-else class="full-width">
+          <span class="q-ml-md" style="position: absolute; left: 0">
+            <q-spinner size="1em" class="q-mr-xs"></q-spinner>
+            {{barText}}
+          </span>
+          <span>{{charge.timeLeft}}</span>
+        </div>
+      </div>
+    </q-linear-progress>
+  </div>`,
   created() {
-    console.log(this.charge.time_left)
     if (!this.charge.timeLeft && !this.charge.paid) {
       this.barText = 'Time elapsed'
       return
