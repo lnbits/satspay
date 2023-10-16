@@ -331,7 +331,7 @@
 </style>
 {% endblock %} {% block scripts %}
 
-<script src="https://mempool.space/mempool.js"></script>
+<script src="{{ url_for('satspay_static', path='js/mempool.js') }}"></script>
 <script src="{{ url_for('satspay_static', path='js/utils.js') }}"></script>
 <script>
   Vue.component(VueQrcode.name, VueQrcode)
