@@ -231,9 +231,9 @@
       },
       unifiedQR() {
         const bitcoin = (this.charge.onchainaddress || '').toUpperCase()
-        let queryString = `bitcoin:${bitcoin}?amount=${
-          this.charge.amount / 100000000
-        }`
+        let queryString = `bitcoin:${bitcoin}?amount=${(
+          this.charge.amount / 1e8
+        ).toFixed(8)}`
         if (this.charge.payment_request) {
           queryString += `&lightning=${this.charge.payment_request.toUpperCase()}`
         }
