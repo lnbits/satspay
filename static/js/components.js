@@ -86,7 +86,6 @@ Vue.component('satspay-time-elapsed', {
   created() {
     if (!this.charge.timeLeft && !this.charge.paid) {
       this.barText = 'Time elapsed'
-      return
     } else if (this.charge.paid) {
       this.barText = 'Payment received'
       return
