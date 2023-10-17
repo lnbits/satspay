@@ -34,7 +34,6 @@
           <q-item dense>
             <q-item-section>
               <q-item-label>Amount paid:</q-item-label>
-              <!-- <q-item-label caption>Amount already paid</q-item-label> -->
             </q-item-section>
 
             <q-item-section side>
@@ -48,7 +47,6 @@
           <q-item v-if="pendingFunds" dense>
             <q-item-section>
               <q-item-label>Amount pending:</q-item-label>
-              <!-- <q-item-label caption>Amount pending on mempool</q-item-label> -->
             </q-item-section>
 
             <q-item-section side>
@@ -61,7 +59,6 @@
           <q-item dense>
             <q-item-section>
               <q-item-label>Amount due:</q-item-label>
-              <!-- <q-item-label caption>Amount left to be paid</q-item-label> -->
             </q-item-section>
 
             <q-item-section side>
@@ -75,7 +72,27 @@
           </q-item>
         </q-list>
       </q-card-section>
-      <q-card-section>
+      <q-card-section v-if="hasEnded">
+        <q-separator></q-separator>
+        <div class="row justify-center q-mt-sm">
+          <div class="col-sm-10 col-md-8 q-ma-md">
+            <div v-if="!charge.timeLeft && !charge.paid">
+              <q-icon
+                class="fit"
+                name="block"
+                style="color: #ccc; font-size: 21.4em"
+              ></q-icon>
+            </div>
+
+            <satspay-paid
+              v-else-if="charge.paid"
+              :charge="charge"
+              :timer="timer"
+            ></satspay-paid>
+          </div>
+        </div>
+      </q-card-section>
+      <q-card-section v-else>
         <q-tabs
           v-model="tab"
           dense
@@ -111,17 +128,7 @@
           <q-tab-panel name="uqr">
             <div class="row justify-center q-mt-sm">
               <div class="col-sm-10 col-md-8">
-                <div v-if="!charge.timeLeft && !charge.paid">
-                  <q-icon
-                    name="block"
-                    style="color: #ccc; font-size: 21.4em"
-                  ></q-icon>
-                </div>
-                <div v-else-if="charge.paid">
-                  <satspay-paid :charge="charge" :timer="timer"></satspay-paid>
-                </div>
                 <satspay-show-qr
-                  v-else
                   :charge-amount="charge.amount"
                   :type="'uqr'"
                   :value="unifiedQR"
@@ -134,17 +141,7 @@
           <q-tab-panel name="ln" v-if="charge.payment_request">
             <div class="row justify-center q-mt-sm">
               <div class="col-sm-10 col-md-8">
-                <div v-if="!charge.timeLeft && !charge.paid">
-                  <q-icon
-                    name="block"
-                    style="color: #ccc; font-size: 21.4em"
-                  ></q-icon>
-                </div>
-                <div v-else-if="charge.paid">
-                  <satspay-paid :charge="charge" :timer="timer"></satspay-paid>
-                </div>
                 <satspay-show-qr
-                  v-else
                   :charge-amount="charge.amount"
                   :type="'ln'"
                   :value="'lightning:' + charge.payment_request.toUpperCase()"
@@ -155,10 +152,7 @@
           </q-tab-panel>
 
           <q-tab-panel name="btc">
-            <div
-              v-if="charge.timeLeft && !charge.paid"
-              class="row justify-center"
-            >
+            <div class="row justify-center">
               <div class="col text-center">
                 <a
                   class="text-secondary"
@@ -174,17 +168,7 @@
             </div>
             <div class="row justify-center q-mt-md">
               <div class="col-sm-10 col-md-8">
-                <div v-if="!charge.timeLeft && !charge.paid">
-                  <q-icon
-                    name="block"
-                    style="color: #ccc; font-size: 21.4em"
-                  ></q-icon>
-                </div>
-                <div v-else-if="charge.paid">
-                  <satspay-paid :charge="charge" :timer="timer"></satspay-paid>
-                </div>
                 <satspay-show-qr
-                  v-else
                   :charge-amount="charge.amount"
                   :type="'btc'"
                   :value="charge.onchainaddress"
@@ -245,19 +229,19 @@
         }
         return hostname
       },
-      amountDue() {
-        return this.charge.amount - this.charge.balance
-      },
       unifiedQR() {
         const bitcoin = (this.charge.onchainaddress || '').toUpperCase()
         let queryString = `bitcoin:${bitcoin}?amount=${
-          this.charge.amount / 1e8
+          this.charge.amount / 100000000
         }`
         if (this.charge.payment_request) {
           queryString += `&lightning=${this.charge.payment_request.toUpperCase()}`
         }
 
         return queryString
+      },
+      hasEnded() {
+        return !this.charge.timeLeft || this.charge.paid
       }
     },
     methods: {
