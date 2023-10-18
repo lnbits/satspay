@@ -1,329 +1,194 @@
 {% extends "public.html" %} {% block page %}
-<div class="row items-center q-mt-md">
-  <div class="col-lg-4 col-md-3 col-sm-1"></div>
-  <div class="col-lg-4 col-md-6 col-sm-10">
+<div class="row justify-center q-mt-md">
+  <div class="col-lg-4 col-md-6 col-sm-8 col-xs-10">
     <q-card>
-      <div class="row q-mb-md">
-        <div class="col text-center q-mt-md">
-          <span class="text-h4" v-text="charge.description"></span>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col text-center">
-          <div
-            color="white"
-            style="background-color: grey; height: 30px; padding: 5px"
-            v-if="!charge.timeLeft"
-          >
-            Time elapsed
-          </div>
-          <div
-            color="white"
-            style="background-color: grey; height: 30px; padding: 5px"
-            v-else-if="charge.paid"
-          >
-            Charge paid
-          </div>
-          <div v-else>
-            <q-linear-progress
-              size="30px"
-              :value="charge.progress"
-              color="secondary"
+      <q-card-section class="text-center">
+        <div class="text-h4">SatsPay</div>
+        <div class="text-subtitle1">${charge.description}</div>
+      </q-card-section>
+      <satspay-time-elapsed :charge="charge"></satspay-time-elapsed>
+      <q-card-section>
+        <q-list>
+          <q-item-label header
+            >Charge ID:
+            <span
+              class="text-uppercase text-secondary cursor-pointer"
+              @click="copyText(charge.id)"
+              >${charge.id}</span
             >
-              <q-item-section>
-                <q-item style="padding: 3px">
-                  <q-spinner color="white" size="0.8em"></q-spinner
-                  ><span style="font-size: 15px; color: white"
-                    ><span class="q-pr-xl q-pl-md"> Awaiting payment...</span>
-                    <span class="q-pl-xl" style="color: white">
-                      {% raw %} {{ charge.timeLeft }} {% endraw %}</span
-                    ></span
-                  >
-                </q-item>
-              </q-item-section>
-            </q-linear-progress>
-          </div>
-        </div>
-      </div>
-      <div class="row q-ml-md q-mt-md q-mb-lg">
-        <div class="col">
-          <div class="row">
-            <div class="col-4 q-pr-lg">Charge Id:</div>
-            <div class="col-8 q-pr-lg">
-              <q-btn flat dense outline @click="copyText(charge.id)"
-                ><span v-text="charge.id"></span
-              ></q-btn>
-            </div>
-          </div>
-          <div class="row items-center">
-            <div class="col-4 q-pr-lg">Total to pay:</div>
-            <div class="col-8 q-pr-lg">
+          </q-item-label>
+          <q-item dense>
+            <q-item-section>
+              <q-item-label>Total to pay:</q-item-label>
+              <!-- <q-item-label caption>Total amount to pay</q-item-label> -->
+            </q-item-section>
+
+            <q-item-section side>
               <q-badge color="blue">
-                <span v-text="charge.amount" class="text-subtitle2"></span> sat
+                <span v-text="charge.amount" class="text-subtitle2"></span>
+                <span>&nbsp;sats</span>
               </q-badge>
-            </div>
-          </div>
-          <div class="row items-center q-mt-sm">
-            <div class="col-4 q-pr-lg">Amount paid:</div>
-            <div class="col-8 q-pr-lg">
+            </q-item-section>
+          </q-item>
+          <q-separator spaced></q-separator>
+          <q-item dense>
+            <q-item-section>
+              <q-item-label>Amount paid:</q-item-label>
+            </q-item-section>
+
+            <q-item-section side>
               <q-badge color="orange">
                 <span v-text="charge.balance" class="text-subtitle2"></span>
-                sat</q-badge
-              >
-            </div>
-          </div>
-          <div v-if="pendingFunds" class="row items-center q-mt-sm">
-            <div class="col-4 q-pr-lg">Amount pending:</div>
-            <div class="col-8 q-pr-lg">
+                <span>&nbsp;sats</span>
+              </q-badge>
+            </q-item-section>
+          </q-item>
+          <q-separator spaced v-if="pendingFunds"></q-separator>
+          <q-item v-if="pendingFunds" dense>
+            <q-item-section>
+              <q-item-label>Amount pending:</q-item-label>
+            </q-item-section>
+
+            <q-item-section side>
               <q-badge color="gray">
-                <span v-text="pendingFunds" class="text-subtitle2"></span> sat
+                <span class="text-subtitle2">${pendingFunds} sats</span>
               </q-badge>
-            </div>
-          </div>
-          <div class="row items-center q-mt-sm">
-            <div class="col-4 q-pr-lg">Amount due:</div>
-            <div class="col-8 q-pr-lg">
-              <q-badge v-if="charge.amount - charge.balance > 0" color="green">
-                <span
-                  v-text="charge.amount - charge.balance"
-                  class="text-subtitle2"
-                ></span>
-                sat
+            </q-item-section>
+          </q-item>
+          <q-separator spaced></q-separator>
+          <q-item dense>
+            <q-item-section>
+              <q-item-label>Amount due:</q-item-label>
+            </q-item-section>
+
+            <q-item-section side>
+              <q-badge color="green">
+                <span class="text-subtitle2"
+                  >${charge.amount - charge.balance > 0 ? charge.amount -
+                  charge.balance : 0} sats</span
+                >
               </q-badge>
-              <q-badge
-                v-else="charge.amount - charge.balance <= 0"
-                color="green"
-                class="text-subtitle2"
-              >
-                none</q-badge
-              >
-            </div>
-          </div>
-        </div>
-      </div>
-      <q-separator></q-separator>
-      <div class="row">
-        <div class="col">
-          <div class="row">
-            <div class="col">
-              <q-btn
-                flat
-                disable
-                v-if="!charge.payment_request || charge.time_elapsed"
-                style="color: primary; width: 100%"
-                label="lightning⚡"
-              >
-                <q-tooltip>
-                  bitcoin lightning payment method not available
-                </q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                v-else
-                @click="payInvoice"
-                style="color: primary; width: 100%"
-                label="lightning⚡"
-              >
-                <q-tooltip> pay with lightning </q-tooltip>
-              </q-btn>
-            </div>
-            <div class="col">
-              <q-btn
-                flat
-                disable
-                v-if="!charge.onchainaddress || charge.time_elapsed"
-                style="color: primary; width: 100%"
-                label="onchain⛓️"
-              >
-                <q-tooltip>
-                  bitcoin onchain payment method not available
-                </q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                v-else
-                @click="payOnchain"
-                style="color: primary; width: 100%"
-                label="onchain⛓️"
-              >
-                <q-tooltip> pay onchain </q-tooltip>
-              </q-btn>
-            </div>
-          </div>
-          <q-separator></q-separator>
-        </div>
-      </div>
-    </q-card>
-    <q-card class="q-pa-lg" v-if="lnbtc">
-      <q-card-section class="q-pa-none">
-        <div class="row items-center q-mt-sm">
-          <div class="col-md-2 col-sm-0"></div>
-          <div class="col-md-8 col-sm-12">
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card-section>
+      <q-card-section v-if="hasEnded">
+        <q-separator></q-separator>
+        <div class="row justify-center q-mt-sm">
+          <div class="col-sm-10 col-md-8 q-ma-md">
             <div v-if="!charge.timeLeft && !charge.paid">
               <q-icon
+                class="fit"
                 name="block"
                 style="color: #ccc; font-size: 21.4em"
               ></q-icon>
             </div>
-            <div v-else-if="charge.paid">
-              <q-icon
-                name="check"
-                style="color: green; font-size: 21.4em"
-                class="fit"
-              ></q-icon>
-              <div class="row text-center q-mt-lg">
-                <div class="col text-center">
-                  <q-btn
-                    outline
-                    v-if="charge.webhook"
-                    :loading="charge.paid"
-                    :percentage="timer"
-                    type="a"
-                    :href="charge.completelink"
-                    :label="charge.completelinktext"
-                    >{%raw%}<template v-slot:loading>
-                      {{charge.completelinktext}} </template
-                    >{%endraw%}</q-btn
-                  >
-                  <p class="q-pt-md">Redirecting after 5 seconds</p>
-                </div>
-              </div>
-            </div>
-            <div v-else>
-              <div class="row text-center q-mb-sm">
-                <div class="col text-center">
-                  <span class="text-subtitle2"
-                    >Pay this lightning-network invoice:</span
-                  >
-                </div>
-              </div>
 
-              <a
-                class="text-secondary"
-                :href="'lightning:'+charge.payment_request"
-              >
-                <q-responsive :ratio="1" class="q-mx-md">
-                  <qrcode
-                    :value="'lightning:' + charge.payment_request.toUpperCase()"
-                    :options="{width: 800}"
-                    class="rounded-borders"
-                  ></qrcode>
-                </q-responsive>
-              </a>
-              <div class="row text-center q-mt-lg">
-                <div class="col text-center">
-                  <q-btn
-                    outline
-                    color="grey"
-                    @click="copyText(charge.payment_request)"
-                    >Copy invoice</q-btn
-                  >
-                </div>
-              </div>
-            </div>
+            <satspay-paid
+              v-else-if="charge.paid"
+              :charge="charge"
+              :timer="timer"
+            ></satspay-paid>
           </div>
         </div>
       </q-card-section>
-      <div class="col-md-2 col-sm-0"></div>
-    </q-card>
-    <q-card class="q-pa-lg" v-if="onbtc">
-      <q-card-section class="q-pa-none">
-        <div v-if="charge.timeLeft && !charge.paid" class="row items-center">
-          <div class="col text-center">
-            <a
-              class="text-secondary"
-              style="color: unset"
-              :href="'https://' + mempoolHostname + '/address/' + charge.onchainaddress"
-              target="_blank"
-              ><span
-                class="text-subtitle1"
-                v-text="charge.onchainaddress"
-              ></span>
-            </a>
-          </div>
-        </div>
-        <div class="row items-center q-mt-md">
-          <div class="col-md-2 col-sm-0"></div>
-          <div class="col-md-8 col-sm-12 text-center">
-            <div v-if="!charge.timeLeft && !charge.paid">
-              <q-icon
-                name="block"
-                style="color: #ccc; font-size: 21.4em"
-              ></q-icon>
-            </div>
-            <div v-else-if="charge.paid">
-              <q-icon
-                name="check"
-                style="color: green; font-size: 21.4em"
-                class="fit"
-              ></q-icon>
-              <div class="row text-center q-mt-lg">
-                <div class="col text-center">
-                  <q-btn
-                    outline
-                    v-if="charge.webhook"
-                    :loading="charge.paid"
-                    :percentage="timer"
-                    type="a"
-                    :href="charge.completelink"
-                    :label="charge.completelinktext"
-                    >{%raw%}<template v-slot:loading>
-                      {{charge.completelinktext}} </template
-                    >{%endraw%}</q-btn
-                  >
-                  <p class="q-pt-md">Redirecting after 5 seconds</p>
-                </div>
-              </div>
-            </div>
-            <div v-else>
-              <div class="row items-center q-mb-sm">
-                <div class="col text-center">
-                  <span class="text-subtitle2"
-                    >Send
+      <q-card-section v-else>
+        <q-tabs
+          v-model="tab"
+          dense
+          class="text-grey"
+          active-color="primary"
+          indicator-color="primary"
+          align="justify"
+          narrow-indicator
+          inline-label
+        >
+          <q-tab
+            v-if="charge.onchainaddress"
+            name="uqr"
+            icon="qr_code"
+            label="UQR (BIP21)"
+          ></q-tab>
+          <q-tab
+            v-if="charge.payment_request"
+            name="ln"
+            icon="bolt"
+            label="Lightning"
+          ></q-tab>
+          <q-tab
+            v-if="charge.onchainaddress"
+            name="btc"
+            icon="link"
+            label="Onchain"
+          ></q-tab>
+        </q-tabs>
 
-                    <span v-text="charge.amount"></span>
-                    sats to this onchain address</span
-                  >
-                </div>
-              </div>
-
-              <a
-                class="text-secondary"
-                :href="'bitcoin:'+charge.onchainaddress"
-              >
-                <q-responsive :ratio="1" class="q-mx-md">
-                  <qrcode
-                    :value="charge.onchainaddress"
-                    :options="{width: 800}"
-                    class="rounded-borders"
-                  ></qrcode>
-                </q-responsive>
-              </a>
-              <div class="row items-center q-mt-lg">
-                <div class="col text-center">
-                  <q-btn
-                    outline
-                    color="grey"
-                    @click="copyText(charge.onchainaddress)"
-                    >Copy address</q-btn
-                  >
-                </div>
+        <q-separator></q-separator>
+        <q-tab-panels v-model="tab" animated style="background: none">
+          <q-tab-panel name="uqr">
+            <div class="row justify-center q-mt-sm">
+              <div class="col-sm-10 col-md-8">
+                <satspay-show-qr
+                  :charge-amount="charge.amount"
+                  :type="'uqr'"
+                  :value="unifiedQR"
+                  :href="unifiedQR"
+                ></satspay-show-qr>
               </div>
             </div>
-          </div>
-          <div class="col-md-2 col-sm-0"></div>
-        </div>
+          </q-tab-panel>
+
+          <q-tab-panel name="ln" v-if="charge.payment_request">
+            <div class="row justify-center q-mt-sm">
+              <div class="col-sm-10 col-md-8">
+                <satspay-show-qr
+                  :charge-amount="charge.amount"
+                  :type="'ln'"
+                  :value="'lightning:' + charge.payment_request.toUpperCase()"
+                  :href="'lightning:'+charge.payment_request"
+                ></satspay-show-qr>
+              </div>
+            </div>
+          </q-tab-panel>
+
+          <q-tab-panel name="btc">
+            <div class="row justify-center">
+              <div class="col text-center">
+                <a
+                  class="text-secondary"
+                  style="color: unset"
+                  :href="'https://' + mempoolHostname + '/address/' + charge.onchainaddress"
+                  target="_blank"
+                  ><span
+                    class="text-subtitle1"
+                    v-text="charge.onchainaddress"
+                  ></span>
+                </a>
+              </div>
+            </div>
+            <div class="row justify-center q-mt-md">
+              <div class="col-sm-10 col-md-8">
+                <satspay-show-qr
+                  :charge-amount="charge.amount"
+                  :type="'btc'"
+                  :value="charge.onchainaddress"
+                  :href="'bitcoin:'+charge.onchainaddress"
+                ></satspay-show-qr>
+              </div>
+            </div>
+          </q-tab-panel>
+        </q-tab-panels>
       </q-card-section>
     </q-card>
   </div>
-  <div class="col-lg- 4 col-md-3 col-sm-1"></div>
 </div>
-{% endblock %} {% block styles %}
+{% endblock %} {% block styles %} {% if charge_data.custom_css %}
 <link
   href="/satspay/css/{{ charge_data.custom_css }}"
   rel="stylesheet"
   type="text/css"
 />
+{% endif %}
 <style>
   header button.q-btn-dropdown {
     display: none;
@@ -333,28 +198,27 @@
 
 <script src="{{ url_for('satspay_static', path='js/mempool.js') }}"></script>
 <script src="{{ url_for('satspay_static', path='js/utils.js') }}"></script>
+<script src="{{ url_for('satspay_static', path='js/components.js') }}"></script>
 <script>
-  Vue.component(VueQrcode.name, VueQrcode)
-
   new Vue({
     el: '#vue',
     mixins: [windowMixin],
+    delimiters: ['${', '}'],
     data() {
       return {
-        charge: JSON.parse('{{charge_data | tojson}}'),
+        charge: mapCharge(JSON.parse('{{charge_data | tojson}}')),
         mempoolEndpoint: '{{mempool_endpoint}}',
         network: '{{network}}',
         pendingFunds: 0,
         ws: null,
         newProgress: 0.4,
         counter: 1,
-        lnbtc: true,
-        onbtc: false,
         wallet: {
           inkey: ''
         },
         timer: 0,
-        cancelListener: () => {}
+        cancelListener: () => {},
+        tab: 'uqr'
       }
     },
     computed: {
@@ -365,8 +229,19 @@
         }
         return hostname
       },
-      amountDue() {
-        return this.charge.amount - this.charge.balance
+      unifiedQR() {
+        const bitcoin = (this.charge.onchainaddress || '').toUpperCase()
+        let queryString = `bitcoin:${bitcoin}?amount=${(
+          this.charge.amount / 1e8
+        ).toFixed(8)}`
+        if (this.charge.payment_request) {
+          queryString += `&lightning=${this.charge.payment_request.toUpperCase()}`
+        }
+
+        return queryString
+      },
+      hasEnded() {
+        return !this.charge.timeLeft || this.charge.paid
       }
     },
     methods: {
@@ -417,14 +292,6 @@
         } catch (error) {
           console.error('cannot check pending funds')
         }
-      },
-      payInvoice: function () {
-        this.lnbtc = true
-        this.onbtc = false
-      },
-      payOnchain: function () {
-        this.lnbtc = false
-        this.onbtc = true
       },
 
       loopRefresh: function () {
@@ -488,8 +355,6 @@
       if (this.charge.custom_css) {
         document.body.setAttribute('data-theme', '')
       }
-      if (this.charge.payment_request) this.payInvoice()
-      else this.payOnchain()
 
       await this.checkBalances()
 
