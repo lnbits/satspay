@@ -11,6 +11,7 @@ from .models import Charges, WalletAccountConfig
 def public_charge(charge: Charges):
     c = {
         "id": charge.id,
+        "name": charge.name,
         "description": charge.description,
         "onchainaddress": charge.onchainaddress,
         "payment_request": charge.payment_request,
