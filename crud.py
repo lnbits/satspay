@@ -43,6 +43,7 @@ async def create_charge(
         INSERT INTO satspay.charges (
             id,
             "user",
+            name,
             description,
             onchainwallet,
             onchainaddress,
@@ -59,11 +60,12 @@ async def create_charge(
             extra,
             custom_css
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             charge_id,
             user,
+            data.name,
             data.description,
             data.onchainwallet,
             onchainaddress,
