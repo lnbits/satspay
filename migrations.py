@@ -112,3 +112,13 @@ async def m007_add_pending_column(db):
         )
     except OperationalError:
         pass
+
+
+async def m008_add_name_column(db):
+    """
+    Add 'name' column for storing the name of the charge
+    """
+    try:
+        await db.execute(f"ALTER TABLE satspay.charges ADD COLUMN name TEXT;")
+    except OperationalError:
+        pass
