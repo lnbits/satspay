@@ -32,6 +32,7 @@ Vue.component('satspay-paid', {
 
 Vue.component('satspay-show-qr', {
   props: ['charge-amount', 'type', 'value', 'href'],
+  mixins: [windowMixin],
   template: `
   <div>
     <div class="row justify-center q-mb-sm">
