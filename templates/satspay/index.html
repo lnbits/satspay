@@ -369,6 +369,13 @@
         <q-input
           filled
           dense
+          v-model.trim="formDialogCharge.data.name"
+          type="text"
+          label="Title (Default is 'LNbits SatsPay')"
+        ></q-input>
+        <q-input
+          filled
+          dense
           v-model.trim="formDialogCharge.data.description"
           type="text"
           label="*Description"
@@ -720,6 +727,7 @@
         this.formDialogThemes.show = false
       },
       cancelCharge: function (data) {
+        this.formDialogCharge.data.description = null
         this.formDialogCharge.data.description = ''
         this.formDialogCharge.data.onchain = false
         this.formDialogCharge.data.onchainwallet = ''
@@ -877,8 +885,11 @@
           )
 
           for (const charge of onchainActiveCharges) {
-            const fn = async () =>{
-              const api = charge.extra?.network === 'Testnet' ? addressesTestAPI : addressesAPI
+            const fn = async () => {
+              const api =
+                charge.extra?.network === 'Testnet'
+                  ? addressesTestAPI
+                  : addressesAPI
               return api.getAddressTxsUtxo({
                 address: charge.onchainaddress
               })

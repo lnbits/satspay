@@ -14,6 +14,7 @@ DEFAULT_MEMPOOL_CONFIG = (
 class CreateCharge(BaseModel):
     onchainwallet: str = Query(None)
     lnbitswallet: str = Query(None)
+    name: str = Query(None)
     description: str = Query(...)
     webhook: str = Query(None)
     completelink: str = Query(None)
@@ -34,6 +35,7 @@ class ChargeConfig(BaseModel):
 
 class Charges(BaseModel):
     id: str
+    name: Optional[str]
     description: Optional[str]
     onchainwallet: Optional[str]
     onchainaddress: Optional[str]
