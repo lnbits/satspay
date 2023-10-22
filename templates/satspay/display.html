@@ -171,8 +171,8 @@
                 <satspay-show-qr
                   :charge-amount="charge.amount"
                   :type="'btc'"
-                  :value="charge.onchainaddress"
-                  :href="'bitcoin:'+charge.onchainaddress"
+                  :value="onchainQR"
+                  :href="'onchainQR"
                 ></satspay-show-qr>
               </div>
             </div>
@@ -238,6 +238,13 @@
           queryString += `&lightning=${this.charge.payment_request.toUpperCase()}`
         }
 
+        return queryString
+      },
+      onchainQR() {
+        const bitcoin = (this.charge.onchainaddress || '').toUpperCase()
+        let queryString = `bitcoin:${bitcoin}?amount=${(
+          this.charge.amount / 1e8
+        ).toFixed(8)}`
         return queryString
       },
       hasEnded() {
