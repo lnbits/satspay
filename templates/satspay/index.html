@@ -95,7 +95,7 @@
               <q-td auto-width>
                 <q-btn
                   size="sm"
-                  color="accent"
+                  color="primary"
                   round
                   dense
                   @click="props.row.expanded= !props.row.expanded"
@@ -106,10 +106,10 @@
               <q-td auto-width>
                 <q-badge
                   v-if="props.row.time_elapsed && props.row.balance < props.row.amount"
-                  color="red"
+                  outline
+                  color="primary"
                 >
                   <a
-                    class="text-secondary"
                     :href="props.row.displayUrl"
                     target="_blank"
                     style="color: unset; text-decoration: none"
@@ -119,10 +119,10 @@
 
                 <q-badge
                   v-else-if="props.row.balance >= props.row.amount"
-                  color="green"
+                  outline
+                  color="primary"
                 >
                   <a
-                    class="text-secondary"
                     :href="props.row.displayUrl"
                     target="_blank"
                     style="color: unset; text-decoration: none"
@@ -130,9 +130,8 @@
                   >
                 </q-badge>
 
-                <q-badge v-else color="blue"
+                <q-badge v-else outline color="primary"
                   ><a
-                    class="text-secondary"
                     :href="props.row.displayUrl"
                     target="_blank"
                     style="color: unset; text-decoration: none"
@@ -142,7 +141,6 @@
               </q-td>
               <q-td key="description" :props="props" :class="">
                 <a
-                  class="text-secondary"
                   :href="props.row.displayUrl"
                   target="_blank"
                   style="color: unset; text-decoration: none"
@@ -253,7 +251,6 @@
                   <div class="col-6 q-pr-lg">
                     <q-btn
                       unelevated
-                      color="gray"
                       outline
                       type="a"
                       :href="props.row.displayUrl"
@@ -263,7 +260,6 @@
                     >
                     <q-btn
                       unelevated
-                      color="gray"
                       outline
                       type="a"
                       @click="refreshBalance(props.row)"
