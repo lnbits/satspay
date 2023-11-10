@@ -366,6 +366,8 @@
         this.loopPingWs()
         this.checkPendingOnchain()
         this.trackAddress(this.charge.onchainaddress)
+      } else {
+        this.tab = 'ln'
       }
     }
   })
