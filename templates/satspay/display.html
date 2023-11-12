@@ -144,7 +144,7 @@
                 <satspay-show-qr
                   :charge-amount="charge.amount"
                   :type="'ln'"
-                  :value="'lightning:' + charge.payment_request.toUpperCase()"
+                  :value="charge.payment_request.toUpperCase()"
                   :href="'lightning:'+charge.payment_request"
                 ></satspay-show-qr>
               </div>
