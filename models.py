@@ -31,6 +31,7 @@ class ChargeConfig(BaseModel):
     network: Optional[str]
     webhook_success: Optional[bool] = False
     webhook_message: Optional[str]
+    misc: dict = {}
 
 
 class Charges(BaseModel):
