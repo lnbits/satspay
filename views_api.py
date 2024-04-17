@@ -13,7 +13,7 @@ from lnbits.decorators import (
     require_invoice_key,
 )
 
-from . import satspay_ext, scheduled_tasks
+from . import satspay_ext
 from .crud import (
     check_address_balance,
     create_charge,
@@ -190,16 +190,3 @@ async def api_theme_delete(theme_id):
 
     await delete_theme(theme_id)
     return "", HTTPStatus.NO_CONTENT
-
-
-@satspay_ext.delete(
-    "/api/v1", status_code=HTTPStatus.OK, dependencies=[Depends(check_admin)]
-)
-async def api_stop():
-    for t in scheduled_tasks:
-        try:
-            t.cancel()
-        except Exception as ex:
-            logger.warning(ex)
-
-    return {"success": True}
