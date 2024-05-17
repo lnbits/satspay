@@ -2,6 +2,51 @@
   "name": "SatsPay Server",
   "short_description": "Create onchain and LN charges",
   "tile": "/satspay/static/image/satspay.png",
-  "contributors": ["arcbtc"],
-  "min_lnbits_version": "0.12.5"
+  "min_lnbits_version": "0.12.5",
+  "contributors": [
+    {
+      "name": "motorina0",
+      "uri": "https://github.com/motorina0",
+      "role": "Contributor"
+    },
+    {
+      "name": "benarc",
+      "uri": "https://github.com/benarc",
+      "role": "Developer"
+    },
+    {
+      "name": "talvasconcelos",
+      "uri": "https://github.com/talvasconcelos",
+      "role": "Developer"
+    },
+    {
+      "name": "dni",
+      "uri": "https://github.com/dni",
+      "role": "Developer"
+    }
+  ],
+  "images": [
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/1.jpg",
+      "link": "https://www.youtube.com/embed/t9Z2tEsrNIU?si=rOQvwCUSWhwPPmYW"
+    },
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/2.png"
+    },
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/3.png"
+    },
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/4.png"
+    },
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/5.png"
+    },
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/6.png"
+    }
+  ],
+  "description_md": "https://raw.githubusercontent.com/lnbits/satspay/main/description.md",
+  "terms_and_conditions_md": "https://raw.githubusercontent.com/lnbits/satspay/main/toc.md",
+  "license": "MIT"
 }
