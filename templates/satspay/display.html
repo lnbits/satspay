@@ -255,14 +255,20 @@
           )
           this.charge = mapCharge(data, this.charge)
           if (this.charge.paid) {
+            let redirectToCompleteLink = true
             this.timerInterval = setInterval(() => {
               if (this.timer >= 100) {
                 clearInterval(this.timerInterval)
-                if (this.charge.completelink)
-                  window.location.href = this.charge.completelink
+
+                // Check if redirection hasn't already occurred
+		        if (redirectToCompleteLink && this.charge.completelink) {
+                    redirectToCompleteLink = false;
+                    window.location.href = this.charge.completelink;
+                }
               }
-              this.timer += 0.25
-            }, 12.5)
+              this.timer += 0.25;
+            }
+              , 12.5)
           }
         } catch (error) {
           LNbits.utils.notifyApiError(error)
