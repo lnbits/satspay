@@ -31,6 +31,7 @@ module = [
   "pydantic.*",
   "pyqrcode.*",
   "shortuuid.*",
+  "sqlalchemy.*",
   "httpx.*",
 ]
 ignore_missing_imports = "True"

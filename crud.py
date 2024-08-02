@@ -1,15 +1,16 @@
 import json
 from typing import List, Optional
 
+from lnbits.core.crud import get_standalone_payment
+from lnbits.core.services import create_invoice
+from lnbits.db import Database
+from lnbits.helpers import urlsafe_short_hash
 from loguru import logger
 
-from lnbits.core.services import create_invoice
-from lnbits.core.views.api import api_payment
-from lnbits.helpers import urlsafe_short_hash
-
-from . import db
 from .helpers import fetch_onchain_balance
 from .models import Charges, CreateCharge, SatsPayThemes, WalletAccountConfig
+
+db = Database("ext_satspay")
 
 
 async def create_charge(
@@ -98,7 +99,10 @@ async def update_charge(charge_id: str, **kwargs) -> Optional[Charges]:
 
 async def get_charge(charge_id: str) -> Optional[Charges]:
     await db.execute(
-        f"UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE id = ?",
+        f"""
+    UPDATE satspay.charges
+    SET last_accessed_at = {db.timestamp_now} WHERE id = ?
+    """,
         (charge_id,),
     )
 
@@ -108,7 +112,9 @@ async def get_charge(charge_id: str) -> Optional[Charges]:
 
 async def get_charges(user: str) -> List[Charges]:
     await db.execute(
-        f"""UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE "user"  = ?""",
+        f"""
+    UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE "user"  = ?
+    """,
         (user,),
     )
     rows = await db.fetchall(
@@ -125,34 +131,30 @@ async def delete_charge(charge_id: str) -> None:
 async def check_address_balance(charge_id: str) -> Optional[Charges]:
     charge = await get_charge(charge_id)
     assert charge
-    if not charge.paid:
-        if charge.onchainaddress:
-            try:
-                balance = await fetch_onchain_balance(charge)
-                confirmed = int(balance["confirmed"])
-                unconfirmed = int(balance["unconfirmed"])
-                if confirmed != charge.balance or unconfirmed != charge.pending:
-                    if charge.zeroconf:
-                        confirmed += unconfirmed
+    if charge.paid:
+        return await get_charge(charge_id)
+    if charge.onchainaddress:
+        try:
+            balance = await fetch_onchain_balance(charge)
+            confirmed = int(balance["confirmed"])
+            unconfirmed = int(balance["unconfirmed"])
+            if confirmed != charge.balance or unconfirmed != charge.pending:
+                if charge.zeroconf:
+                    confirmed += unconfirmed
 
-                    await update_charge(
-                        charge_id=charge_id,
-                        balance=confirmed,
-                        pending=unconfirmed,
-                    )
-            except Exception as e:
-                logger.warning(e)
-        if charge.lnbitswallet:
-            try:
-                invoice_status = await api_payment(charge.payment_hash)
-
-                if invoice_status["paid"]:
-                    return await update_charge(
-                        charge_id=charge_id, balance=charge.amount
-                    )
-            except Exception as e:
-                logger.warning(e)
-    return await get_charge(charge_id)
+                return await update_charge(
+                    charge_id=charge_id,
+                    balance=confirmed,
+                    pending=unconfirmed,
+                )
+        except Exception as e:
+            logger.warning(e)
+    if charge.lnbitswallet and charge.payment_hash:
+        payment = await get_standalone_payment(charge.payment_hash)
+        status = (await payment.check_status()).success if payment else False
+        if status:
+            return await update_charge(charge_id=charge_id, balance=charge.amount)
+    return None
 
 
 ################## SETTINGS ###################
