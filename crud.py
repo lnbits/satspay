@@ -154,7 +154,7 @@ async def check_address_balance(charge_id: str) -> Optional[Charges]:
         status = (await payment.check_status()).success if payment else False
         if status:
             return await update_charge(charge_id=charge_id, balance=charge.amount)
-    return None
+    return await get_charge(charge_id)
 
 
 ################## SETTINGS ###################
