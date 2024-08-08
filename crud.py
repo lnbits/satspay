@@ -95,13 +95,12 @@ async def create_charge(
     return charge
 
 
-async def update_charge(charge_id: str, **kwargs) -> Charge:
-    q = ", ".join([f"{field[0]} = ?" for field in kwargs.items()])
+async def update_charge(charge: Charge) -> Charge:
+    q = ", ".join([f"{field[0]} = ?" for field in charge.dict().items()])
     await db.execute(
-        f"UPDATE satspay.charges SET {q} WHERE id = ?", (*kwargs.values(), charge_id)
+        f"UPDATE satspay.charges SET {q} WHERE id = ?",
+        (*charge.dict().values(), charge.id),
     )
-    charge = await get_charge(charge_id)
-    assert charge, "Updated charge does not exist"
     return charge
 
 
@@ -149,18 +148,17 @@ async def check_address_balance(charge_id: str) -> Charge:
             if confirmed != charge.balance or unconfirmed != charge.pending:
                 if charge.zeroconf:
                     confirmed += unconfirmed
-                return await update_charge(
-                    charge_id=charge_id,
-                    balance=confirmed,
-                    pending=unconfirmed,
-                )
+                charge.balance = confirmed
+                charge.pending = unconfirmed
+                return await update_charge(charge)
         except Exception as e:
             logger.warning(e)
     if charge.lnbitswallet and charge.payment_hash:
         payment = await get_standalone_payment(charge.payment_hash)
         status = (await payment.check_status()).success if payment else False
         if status:
-            return await update_charge(charge_id=charge_id, balance=charge.amount)
+            charge.balance = charge.amount
+            return await update_charge(charge)
     return charge
 
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from sqlite3 import Row
 from typing import Optional
 
 from fastapi.param_functions import Query
@@ -57,10 +56,6 @@ class Charge(BaseModel):
     timestamp: int
     last_accessed_at: Optional[int] = 0
 
-    @classmethod
-    def from_row(cls, row: Row) -> Charge:
-        return cls(**dict(row))
-
     @property
     def time_left(self):
         assert self.last_accessed_at, "Charge has not been accessed yet."
@@ -99,12 +94,12 @@ class Charge(BaseModel):
             "balance",
             "pending",
             "timestamp",
-            "time_elapsed",
-            "time_left",
             "custom_css",
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["paid"] = self.paid
+        c["time_elapsed"] = self.time_elapsed
+        c["time_left"] = self.time_left
         if self.paid:
             c["completelink"] = self.completelink
             c["completelinktext"] = self.completelinktext
