@@ -1,19 +1,17 @@
 import json
-from typing import Optional
 from http import HTTPStatus
+from typing import Optional
 
-from fastapi import Depends, HTTPException, Query
-from loguru import logger
-
+from fastapi import APIRouter, Depends, HTTPException
+from lnbits.core.models import WalletTypeInfo
 from lnbits.decorators import (
-    WalletTypeInfo,
     check_admin,
     get_key_type,
     require_admin_key,
     require_invoice_key,
 )
+from loguru import logger
 
-from . import satspay_ext
 from .crud import (
     check_address_balance,
     create_charge,
@@ -29,8 +27,10 @@ from .crud import (
 from .helpers import call_webhook, fetch_onchain_config, public_charge
 from .models import CreateCharge, SatsPayThemes
 
+satspay_api_router = APIRouter()
 
-@satspay_ext.post("/api/v1/charge")
+
+@satspay_api_router.post("/api/v1/charge")
 async def api_charge_create(
     data: CreateCharge, wallet: WalletTypeInfo = Depends(require_invoice_key)
 ):
@@ -55,14 +55,14 @@ async def api_charge_create(
             **{"time_left": charge.time_left},
             **{"paid": charge.paid},
         }
-    except Exception as ex:
-        logger.debug(f"Satspay error: {str}")
+    except Exception as exc:
+        logger.debug(f"Satspay error: {exc}")
         raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(ex)
-        )
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
-@satspay_ext.put(
+@satspay_api_router.put(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_admin_key)]
 )
 async def api_charge_update(
@@ -74,7 +74,7 @@ async def api_charge_update(
     return charge.dict()
 
 
-@satspay_ext.get("/api/v1/charges")
+@satspay_api_router.get("/api/v1/charges")
 async def api_charges_retrieve(wallet: WalletTypeInfo = Depends(get_key_type)):
     try:
         return [
@@ -87,11 +87,13 @@ async def api_charges_retrieve(wallet: WalletTypeInfo = Depends(get_key_type)):
             }
             for charge in await get_charges(wallet.wallet.user)
         ]
-    except:
+    except Exception:
         return ""
 
 
-@satspay_ext.get("/api/v1/charge/{charge_id}", dependencies=[Depends(get_key_type)])
+@satspay_api_router.get(
+    "/api/v1/charge/{charge_id}", dependencies=[Depends(get_key_type)]
+)
 async def api_charge_retrieve(charge_id: str):
     charge = await get_charge(charge_id)
 
@@ -108,7 +110,9 @@ async def api_charge_retrieve(charge_id: str):
     }
 
 
-@satspay_ext.delete("/api/v1/charge/{charge_id}", dependencies=[Depends(get_key_type)])
+@satspay_api_router.delete(
+    "/api/v1/charge/{charge_id}", dependencies=[Depends(get_key_type)]
+)
 async def api_charge_delete(charge_id: str):
     charge = await get_charge(charge_id)
 
@@ -124,7 +128,7 @@ async def api_charge_delete(charge_id: str):
 #############################BALANCE##########################
 
 
-@satspay_ext.get("/api/v1/charges/balance/{charge_ids}")
+@satspay_api_router.get("/api/v1/charges/balance/{charge_ids}")
 async def api_charges_balance(charge_ids):
     charge_id_list = charge_ids.split(",")
     charges = []
@@ -134,7 +138,7 @@ async def api_charges_balance(charge_ids):
     return charges
 
 
-@satspay_ext.get("/api/v1/charge/balance/{charge_id}")
+@satspay_api_router.get("/api/v1/charge/balance/{charge_id}")
 async def api_charge_balance(charge_id):
     charge = await check_address_balance(charge_id)
 
@@ -154,8 +158,8 @@ async def api_charge_balance(charge_id):
 #############################THEMES##########################
 
 
-@satspay_ext.post("/api/v1/themes", dependencies=[Depends(check_admin)])
-@satspay_ext.post("/api/v1/themes/{css_id}", dependencies=[Depends(check_admin)])
+@satspay_api_router.post("/api/v1/themes", dependencies=[Depends(check_admin)])
+@satspay_api_router.post("/api/v1/themes/{css_id}", dependencies=[Depends(check_admin)])
 async def api_themes_save(
     data: SatsPayThemes,
     wallet: WalletTypeInfo = Depends(require_admin_key),
@@ -169,7 +173,7 @@ async def api_themes_save(
     return theme
 
 
-@satspay_ext.get("/api/v1/themes")
+@satspay_api_router.get("/api/v1/themes")
 async def api_themes_retrieve(wallet: WalletTypeInfo = Depends(get_key_type)):
     try:
         return await get_themes(wallet.wallet.user)
@@ -179,7 +183,9 @@ async def api_themes_retrieve(wallet: WalletTypeInfo = Depends(get_key_type)):
         return ""
 
 
-@satspay_ext.delete("/api/v1/themes/{theme_id}", dependencies=[Depends(get_key_type)])
+@satspay_api_router.delete(
+    "/api/v1/themes/{theme_id}", dependencies=[Depends(get_key_type)]
+)
 async def api_theme_delete(theme_id):
     theme = await get_theme(theme_id)
 

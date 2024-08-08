@@ -1,9 +1,8 @@
 from typing import Tuple
 
 import httpx
+from lnbits.settings import settings
 from loguru import logger
-
-from lnbits.app import settings
 
 from .models import Charges, WalletAccountConfig
 

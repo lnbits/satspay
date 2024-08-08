@@ -36,8 +36,10 @@ async def m002_add_charge_extra_data(db):
     Add 'extra' column for storing various config about the charge (JSON format)
     """
     await db.execute(
-        """ALTER TABLE satspay.charges
-            ADD COLUMN extra TEXT DEFAULT '{"mempool_endpoint": "https://mempool.space", "network": "Mainnet"}';
+        """
+        ALTER TABLE satspay.charges
+        ADD COLUMN extra TEXT DEFAULT
+        '{"mempool_endpoint": "https://mempool.space", "network": "Mainnet"}'
         """
     )
 
@@ -72,7 +74,7 @@ async def m005_add_charge_last_accessed_at_column(db):
     Add 'last_accessed_at' column for storing the last updated time
     """
     await db.execute(
-        f"ALTER TABLE satspay.charges ADD COLUMN last_accessed_at TIMESTAMP;"
+        "ALTER TABLE satspay.charges ADD COLUMN last_accessed_at TIMESTAMP;"
     )
 
 
@@ -82,7 +84,9 @@ async def m006_add_zeroconf_column(db):
     """
     try:
         await db.execute(
-            f"ALTER TABLE satspay.charges ADD COLUMN zeroconf BOOLEAN NOT NULL DEFAULT FALSE;"
+            """
+        ALTER TABLE satspay.charges ADD COLUMN zeroconf BOOLEAN NOT NULL DEFAULT FALSE
+        """
         )
 
         await db.execute(
@@ -101,7 +105,10 @@ async def m007_add_pending_column(db):
     """
     try:
         await db.execute(
-            f"ALTER TABLE satspay.charges ADD COLUMN pending {db.big_int} NOT NULL DEFAULT 0;"
+            f"""
+            ALTER TABLE satspay.charges
+            ADD COLUMN pending {db.big_int} NOT NULL DEFAULT 0
+        """
         )
 
         await db.execute(
@@ -119,6 +126,6 @@ async def m008_add_name_column(db):
     Add 'name' column for storing the name of the charge
     """
     try:
-        await db.execute(f"ALTER TABLE satspay.charges ADD COLUMN name TEXT;")
+        await db.execute("ALTER TABLE satspay.charges ADD COLUMN name TEXT;")
     except OperationalError:
         pass

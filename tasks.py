@@ -1,11 +1,10 @@
 import asyncio
 import json
 
-from loguru import logger
-
 from lnbits.core.models import Payment
 from lnbits.helpers import get_current_extension_name
 from lnbits.tasks import register_invoice_listener
+from loguru import logger
 
 from .crud import check_address_balance, get_charge, update_charge
 from .helpers import call_webhook

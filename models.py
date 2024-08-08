@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timedelta
 from sqlite3 import Row
 from typing import Optional
 
@@ -62,9 +61,10 @@ class Charges(BaseModel):
 
     @property
     def time_left(self):
+        assert self.last_accessed_at, "Charge has not been accessed yet."
         life_in_seconds = self.last_accessed_at - self.timestamp
-        life_left_in_secods = self.time * 60 - life_in_seconds
-        return life_left_in_secods / 60
+        life_left_in_seconds = self.time * 60 - life_in_seconds
+        return life_left_in_seconds / 60
 
     @property
     def time_elapsed(self):
