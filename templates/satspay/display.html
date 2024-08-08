@@ -261,14 +261,13 @@
                 clearInterval(this.timerInterval)
 
                 // Check if redirection hasn't already occurred
-		        if (redirectToCompleteLink && this.charge.completelink) {
-                    redirectToCompleteLink = false;
-                    window.location.href = this.charge.completelink;
+                if (redirectToCompleteLink && this.charge.completelink) {
+                  redirectToCompleteLink = false
+                  window.location.href = this.charge.completelink
                 }
               }
-              this.timer += 0.25;
-            }
-              , 12.5)
+              this.timer += 0.25
+            }, 12.5)
           }
         } catch (error) {
           LNbits.utils.notifyApiError(error)

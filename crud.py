@@ -8,7 +8,13 @@ from lnbits.helpers import urlsafe_short_hash
 from loguru import logger
 
 from .helpers import fetch_onchain_balance
-from .models import Charges, CreateCharge, SatsPayThemes, WalletAccountConfig
+from .models import (
+    Charge,
+    CreateCharge,
+    CreateSatsPayTheme,
+    SatsPayTheme,
+    WalletAccountConfig,
+)
 
 db = Database("ext_satspay")
 
@@ -18,7 +24,7 @@ async def create_charge(
     data: CreateCharge,
     config: Optional[WalletAccountConfig],
     onchainaddress: Optional[str] = None,
-) -> Charges:
+) -> Charge:
     data = CreateCharge(**data.dict())
     charge_id = urlsafe_short_hash()
     if data.onchainwallet:
@@ -89,15 +95,17 @@ async def create_charge(
     return charge
 
 
-async def update_charge(charge_id: str, **kwargs) -> Optional[Charges]:
+async def update_charge(charge_id: str, **kwargs) -> Charge:
     q = ", ".join([f"{field[0]} = ?" for field in kwargs.items()])
     await db.execute(
         f"UPDATE satspay.charges SET {q} WHERE id = ?", (*kwargs.values(), charge_id)
     )
-    return await get_charge(charge_id)
+    charge = await get_charge(charge_id)
+    assert charge, "Updated charge does not exist"
+    return charge
 
 
-async def get_charge(charge_id: str) -> Optional[Charges]:
+async def get_charge(charge_id: str) -> Optional[Charge]:
     await db.execute(
         f"""
     UPDATE satspay.charges
@@ -107,10 +115,10 @@ async def get_charge(charge_id: str) -> Optional[Charges]:
     )
 
     row = await db.fetchone("SELECT * FROM satspay.charges WHERE id = ?", (charge_id,))
-    return Charges.from_row(row) if row else None
+    return Charge(**row) if row else None
 
 
-async def get_charges(user: str) -> List[Charges]:
+async def get_charges(user: str) -> List[Charge]:
     await db.execute(
         f"""
     UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE "user"  = ?
@@ -121,18 +129,18 @@ async def get_charges(user: str) -> List[Charges]:
         """SELECT * FROM satspay.charges WHERE "user" = ? ORDER BY "timestamp" DESC """,
         (user,),
     )
-    return [Charges.from_row(row) for row in rows]
+    return [Charge(**row) for row in rows]
 
 
 async def delete_charge(charge_id: str) -> None:
     await db.execute("DELETE FROM satspay.charges WHERE id = ?", (charge_id,))
 
 
-async def check_address_balance(charge_id: str) -> Optional[Charges]:
+async def check_address_balance(charge_id: str) -> Charge:
     charge = await get_charge(charge_id)
-    assert charge
+    assert charge, "balance check failed, charge does not exist"
     if charge.paid:
-        return await get_charge(charge_id)
+        return charge
     if charge.onchainaddress:
         try:
             balance = await fetch_onchain_balance(charge)
@@ -141,7 +149,6 @@ async def check_address_balance(charge_id: str) -> Optional[Charges]:
             if confirmed != charge.balance or unconfirmed != charge.pending:
                 if charge.zeroconf:
                     confirmed += unconfirmed
-
                 return await update_charge(
                     charge_id=charge_id,
                     balance=confirmed,
@@ -154,54 +161,58 @@ async def check_address_balance(charge_id: str) -> Optional[Charges]:
         status = (await payment.check_status()).success if payment else False
         if status:
             return await update_charge(charge_id=charge_id, balance=charge.amount)
-    return await get_charge(charge_id)
+    return charge
 
 
-################## SETTINGS ###################
-
-
-async def save_theme(data: SatsPayThemes, css_id: Optional[str]):
-    # insert or update
-    if css_id:
-        await db.execute(
-            """
-            UPDATE satspay.themes SET custom_css = ?, title = ? WHERE css_id = ?
-            """,
-            (data.custom_css, data.title, css_id),
+async def create_theme(data: CreateSatsPayTheme, user_id: str) -> SatsPayTheme:
+    css_id = urlsafe_short_hash()
+    await db.execute(
+        """
+        INSERT INTO satspay.themes (
+            css_id,
+            title,
+            "user",
+            custom_css
         )
-    else:
-        css_id = urlsafe_short_hash()
-        await db.execute(
-            """
-            INSERT INTO satspay.themes (
-                css_id,
-                title,
-                "user",
-                custom_css
-                )
-            VALUES (?, ?, ?, ?)
-            """,
-            (
-                css_id,
-                data.title,
-                data.user,
-                data.custom_css,
-            ),
-        )
-    return await get_theme(css_id)
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            css_id,
+            data.title,
+            user_id,
+            data.custom_css,
+        ),
+    )
+    theme = await get_theme(css_id)
+    assert theme, "Newly created theme does not exist"
+    return theme
 
 
-async def get_theme(css_id: str) -> Optional[SatsPayThemes]:
+async def update_theme(data: SatsPayTheme) -> SatsPayTheme:
+    await db.execute(
+        """
+        UPDATE satspay.themes SET custom_css = ?, title = ? WHERE css_id = ?
+        """,
+        (data.custom_css, data.title, data.css_id),
+    )
+    theme = await get_theme(data.css_id)
+    assert theme, "newly updated theme does not exist"
+    return theme
+
+
+async def get_theme(css_id: str) -> Optional[SatsPayTheme]:
     row = await db.fetchone("SELECT * FROM satspay.themes WHERE css_id = ?", (css_id,))
-    return SatsPayThemes.from_row(row) if row else None
+    return SatsPayTheme(**row) if row else None
 
 
-async def get_themes(user_id: str) -> List[SatsPayThemes]:
+async def get_themes(user_id: str) -> List[SatsPayTheme]:
     rows = await db.fetchall(
-        """SELECT * FROM satspay.themes WHERE "user" = ? ORDER BY "title" DESC """,
+        """
+        SELECT * FROM satspay.themes WHERE "user" = ? ORDER BY title DESC
+        """,
         (user_id,),
     )
-    return [SatsPayThemes.from_row(row) for row in rows]
+    return [SatsPayTheme(**row) for row in rows]
 
 
 async def delete_theme(theme_id: str) -> None:
