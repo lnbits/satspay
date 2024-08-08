@@ -4,43 +4,16 @@ import httpx
 from lnbits.settings import settings
 from loguru import logger
 
-from .models import Charges, WalletAccountConfig
+from .models import Charge, WalletAccountConfig
 
 
-def public_charge(charge: Charges):
-    c = {
-        "id": charge.id,
-        "name": charge.name,
-        "description": charge.description,
-        "onchainaddress": charge.onchainaddress,
-        "payment_request": charge.payment_request,
-        "payment_hash": charge.payment_hash,
-        "time": charge.time,
-        "amount": charge.amount,
-        "zeroconf": charge.zeroconf,
-        "balance": charge.balance,
-        "pending": charge.pending,
-        "paid": charge.paid,
-        "timestamp": charge.timestamp,
-        "time_elapsed": charge.time_elapsed,
-        "time_left": charge.time_left,
-        "custom_css": charge.custom_css,
-    }
-
-    if charge.paid:
-        c["completelink"] = charge.completelink
-        c["completelinktext"] = charge.completelinktext
-
-    return c
-
-
-async def call_webhook(charge: Charges):
+async def call_webhook(charge: Charge):
     async with httpx.AsyncClient() as client:
         try:
             assert charge.webhook
             r = await client.post(
                 charge.webhook,
-                json=public_charge(charge),
+                json=charge.public,
                 timeout=40,
             )
             return {
@@ -54,7 +27,7 @@ async def call_webhook(charge: Charges):
             return {"webhook_success": False, "webhook_message": str(e)}
 
 
-async def fetch_onchain_balance(charge: Charges):
+async def fetch_onchain_balance(charge: Charge):
     endpoint = (
         f"{charge.config.mempool_endpoint}/testnet"
         if charge.config.network == "Testnet"

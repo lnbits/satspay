@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from sqlite3 import Row
 from typing import Optional
@@ -18,22 +20,22 @@ class CreateCharge(BaseModel):
     webhook: str = Query(None)
     completelink: str = Query(None)
     completelinktext: str = Query("Back to Merchant")
-    custom_css: Optional[str]
     time: int = Query(..., ge=1)
     amount: int = Query(..., ge=1)
     zeroconf: bool = Query(False)
     extra: str = DEFAULT_MEMPOOL_CONFIG
+    custom_css: Optional[str] = Query(None)
 
 
 class ChargeConfig(BaseModel):
     mempool_endpoint: Optional[str]
     network: Optional[str]
-    webhook_success: Optional[bool] = False
     webhook_message: Optional[str]
+    webhook_success: bool = False
     misc: dict = {}
 
 
-class Charges(BaseModel):
+class Charge(BaseModel):
     id: str
     name: Optional[str]
     description: Optional[str]
@@ -56,7 +58,7 @@ class Charges(BaseModel):
     last_accessed_at: Optional[int] = 0
 
     @classmethod
-    def from_row(cls, row: Row) -> "Charges":
+    def from_row(cls, row: Row) -> Charge:
         return cls(**dict(row))
 
     @property
@@ -82,19 +84,46 @@ class Charges(BaseModel):
         charge_config = json.loads(self.extra)
         return ChargeConfig(**charge_config)
 
+    @property
+    def public(self):
+        public_keys = [
+            "id",
+            "name",
+            "description",
+            "onchainaddress",
+            "payment_request",
+            "payment_hash",
+            "time",
+            "amount",
+            "zeroconf",
+            "balance",
+            "pending",
+            "timestamp",
+            "time_elapsed",
+            "time_left",
+            "custom_css",
+        ]
+        c = {k: v for k, v in self.dict().items() if k in public_keys}
+        c["paid"] = self.paid
+        if self.paid:
+            c["completelink"] = self.completelink
+            c["completelinktext"] = self.completelinktext
+        return c
+
     def must_call_webhook(self):
         return self.webhook and self.paid and self.config.webhook_success is False
 
 
-class SatsPayThemes(BaseModel):
-    css_id: str = Query(None)
-    title: str = Query(None)
-    custom_css: str = Query(None)
-    user: Optional[str]
+class CreateSatsPayTheme(BaseModel):
+    title: str = Query(...)
+    custom_css: str = Query(...)
 
-    @classmethod
-    def from_row(cls, row: Row) -> "SatsPayThemes":
-        return cls(**dict(row))
+
+class SatsPayTheme(BaseModel):
+    css_id: str
+    title: str
+    custom_css: str
+    user: str
 
 
 class WalletAccountConfig(BaseModel):

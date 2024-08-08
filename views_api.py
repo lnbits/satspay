@@ -1,9 +1,8 @@
 import json
 from http import HTTPStatus
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from lnbits.core.models import WalletTypeInfo
+from lnbits.core.models import User, WalletTypeInfo
 from lnbits.decorators import (
     check_admin,
     get_key_type,
@@ -15,17 +14,18 @@ from loguru import logger
 from .crud import (
     check_address_balance,
     create_charge,
+    create_theme,
     delete_charge,
     delete_theme,
     get_charge,
     get_charges,
     get_theme,
     get_themes,
-    save_theme,
     update_charge,
+    update_theme,
 )
-from .helpers import call_webhook, fetch_onchain_config, public_charge
-from .models import CreateCharge, SatsPayThemes
+from .helpers import call_webhook, fetch_onchain_config
+from .models import CreateCharge, CreateSatsPayTheme, SatsPayTheme
 
 satspay_api_router = APIRouter()
 
@@ -152,35 +152,35 @@ async def api_charge_balance(charge_id):
         extra = {**charge.config.dict(), **resp}
         await update_charge(charge_id=charge.id, extra=json.dumps(extra))
 
-    return {**public_charge(charge)}
+    return {**charge.public}
 
 
-#############################THEMES##########################
+@satspay_api_router.post("/api/v1/themes")
+async def api_themes_create(
+    data: CreateSatsPayTheme,
+    user: User = Depends(check_admin),
+) -> SatsPayTheme:
+    return await create_theme(data=data, user_id=user.id)
 
 
-@satspay_api_router.post("/api/v1/themes", dependencies=[Depends(check_admin)])
-@satspay_api_router.post("/api/v1/themes/{css_id}", dependencies=[Depends(check_admin)])
+@satspay_api_router.post("/api/v1/themes/{css_id}")
 async def api_themes_save(
-    data: SatsPayThemes,
-    wallet: WalletTypeInfo = Depends(require_admin_key),
-    css_id: Optional[str] = None,
-):
-    if css_id:
-        theme = await save_theme(css_id=css_id, data=data)
-    else:
-        data.user = wallet.wallet.user
-        theme = await save_theme(data=data, css_id="no_id")
-    return theme
+    css_id: str,
+    data: CreateSatsPayTheme,
+    user: User = Depends(check_admin),
+) -> SatsPayTheme:
+
+    theme = SatsPayTheme(
+        css_id=css_id,
+        user=user.id,
+        **data.dict(),
+    )
+    return await update_theme(theme)
 
 
 @satspay_api_router.get("/api/v1/themes")
-async def api_themes_retrieve(wallet: WalletTypeInfo = Depends(get_key_type)):
-    try:
-        return await get_themes(wallet.wallet.user)
-    except HTTPException:
-        logger.error("Error loading satspay themes")
-        logger.error(HTTPException)
-        return ""
+async def api_get_themes(user: User = Depends(check_admin)):
+    return await get_themes(user.id)
 
 
 @satspay_api_router.delete(
@@ -188,11 +188,8 @@ async def api_themes_retrieve(wallet: WalletTypeInfo = Depends(get_key_type)):
 )
 async def api_theme_delete(theme_id):
     theme = await get_theme(theme_id)
-
     if not theme:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Theme does not exist."
         )
-
     await delete_theme(theme_id)
-    return "", HTTPStatus.NO_CONTENT
