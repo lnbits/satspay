@@ -431,19 +431,6 @@
             :options="walletLinks"
             label="Onchain Wallet"
           ></q-select>
-          <q-item tag="label" v-ripple>
-            <q-item-section avatar top>
-              <q-checkbox v-model="formDialogCharge.data.zeroconf" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Zeroconf (0-conf) payments</q-item-label>
-              <q-item-label caption>
-                Allow payments with 0 confirmations. This is less secure but
-                faster. Payments will be marked paid once they are seen on the
-                mempool.
-              </q-item-label>
-            </q-item-section>
-          </q-item>
         </div>
 
         <q-select
@@ -699,7 +686,6 @@
           data: {
             onchain: false,
             onchainwallet: '',
-            zeroconf: false,
             lnbits: false,
             description: '',
             custom_css: '',
@@ -727,7 +713,6 @@
         this.formDialogCharge.data.description = ''
         this.formDialogCharge.data.onchain = false
         this.formDialogCharge.data.onchainwallet = ''
-        this.formDialogCharge.data.zeroconf = false
         this.formDialogCharge.data.lnbitswallet = ''
         this.formDialogCharge.data.time = null
         this.formDialogCharge.data.amount = null
@@ -977,7 +962,6 @@
           this.formDialogCharge.show = false
           this.formDialogCharge.data = {
             onchain: false,
-            zeroconf: false,
             lnbits: false,
             description: '',
             time: null,

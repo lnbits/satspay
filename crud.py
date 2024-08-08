@@ -62,12 +62,11 @@ async def create_charge(
             completelinktext,
             time,
             amount,
-            zeroconf,
             balance,
             extra,
             custom_css
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             charge_id,
@@ -84,7 +83,6 @@ async def create_charge(
             data.completelinktext,
             data.time,
             data.amount,
-            data.zeroconf,
             0,
             data.extra,
             data.custom_css,
@@ -146,8 +144,6 @@ async def check_address_balance(charge_id: str) -> Charge:
             confirmed = int(balance["confirmed"])
             unconfirmed = int(balance["unconfirmed"])
             if confirmed != charge.balance or unconfirmed != charge.pending:
-                if charge.zeroconf:
-                    confirmed += unconfirmed
                 charge.balance = confirmed
                 charge.pending = unconfirmed
                 return await update_charge(charge)

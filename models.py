@@ -21,7 +21,6 @@ class CreateCharge(BaseModel):
     completelinktext: str = Query("Back to Merchant")
     time: int = Query(..., ge=1)
     amount: int = Query(..., ge=1)
-    zeroconf: bool = Query(False)
     extra: str = DEFAULT_MEMPOOL_CONFIG
     custom_css: Optional[str] = Query(None)
 
@@ -50,7 +49,6 @@ class Charge(BaseModel):
     extra: str = DEFAULT_MEMPOOL_CONFIG
     time: int
     amount: int
-    zeroconf: bool
     balance: int
     pending: Optional[int] = 0
     timestamp: int
@@ -90,7 +88,6 @@ class Charge(BaseModel):
             "payment_hash",
             "time",
             "amount",
-            "zeroconf",
             "balance",
             "pending",
             "timestamp",

@@ -66,7 +66,7 @@ async def m004_add_custom_css_to_charges(db):
     Add custom css option column to the 'charges' table
     """
 
-    await db.execute("ALTER TABLE satspay.charges ADD COLUMN custom_css TEXT;")
+    await db.execute("ALTER TABLE satspay.charges ADD COLUMN custom_css TEXT")
 
 
 async def m005_add_charge_last_accessed_at_column(db):
@@ -74,7 +74,7 @@ async def m005_add_charge_last_accessed_at_column(db):
     Add 'last_accessed_at' column for storing the last updated time
     """
     await db.execute(
-        "ALTER TABLE satspay.charges ADD COLUMN last_accessed_at TIMESTAMP;"
+        "ALTER TABLE satspay.charges ADD COLUMN last_accessed_at TIMESTAMP"
     )
 
 
@@ -87,13 +87,6 @@ async def m006_add_zeroconf_column(db):
             """
         ALTER TABLE satspay.charges ADD COLUMN zeroconf BOOLEAN NOT NULL DEFAULT FALSE
         """
-        )
-
-        await db.execute(
-            """
-            UPDATE satspay.charges
-            SET zeroconf = FALSE
-            """
         )
     except OperationalError:
         pass
@@ -127,5 +120,46 @@ async def m008_add_name_column(db):
     """
     try:
         await db.execute("ALTER TABLE satspay.charges ADD COLUMN name TEXT;")
+    except OperationalError:
+        pass
+
+
+async def m009_remove_zeroconf_column(db):
+    """
+    Remove 'zeroconf' column
+    """
+    try:
+        select = ", ".join(
+            [
+                "id",
+                "user",
+                "description",
+                "onchainwallet",
+                "onchainaddress",
+                "lnbitswallet",
+                "payment_request",
+                "payment_hash",
+                "webhook",
+                "completelink",
+                "completelinktext",
+                "time",
+                "amount",
+                "balance",
+                "timestamp",
+                "extra",
+                "name",
+                "custom_css",
+                "pending",
+                "last_accessed_at",
+            ]
+        )
+        await db.execute(
+            f"""
+            CREATE TABLE satspay.charges_backup AS
+            SELECT {select} FROM satspay.charges
+            """
+        )
+        await db.execute("DROP TABLE satspay.charges")
+        await db.execute("ALTER TABLE satspay.charges_backup RENAME TO charges")
     except OperationalError:
         pass
