@@ -25,7 +25,7 @@ from .crud import (
     update_theme,
 )
 from .helpers import call_webhook, fetch_onchain_config
-from .models import CreateCharge, CreateSatsPayTheme, SatsPayTheme
+from .models import Charge, CreateCharge, CreateSatsPayTheme, SatsPayTheme
 
 satspay_api_router = APIRouter()
 
@@ -34,44 +34,33 @@ satspay_api_router = APIRouter()
 async def api_charge_create(
     data: CreateCharge, wallet: WalletTypeInfo = Depends(require_invoice_key)
 ):
-    try:
-        if data.onchainwallet:
+    config = None
+    new_address = None
+    if data.onchainwallet:
+        try:
             config, new_address = await fetch_onchain_config(
                 data.onchainwallet, wallet.wallet.inkey
             )
-        else:
-            config, new_address = None, None
+        except Exception as exc:
+            logger.error(f"Error fetching onchain config: {exc}")
 
-        charge = await create_charge(
-            user=wallet.wallet.user,
-            data=data,
-            config=config,
-            onchainaddress=new_address,
-        )
-        assert charge
-        return {
-            **charge.dict(),
-            **{"time_elapsed": charge.time_elapsed},
-            **{"time_left": charge.time_left},
-            **{"paid": charge.paid},
-        }
-    except Exception as exc:
-        logger.debug(f"Satspay error: {exc}")
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
+    return await create_charge(
+        user=wallet.wallet.user,
+        data=data,
+        config=config,
+        onchainaddress=new_address,
+    )
 
 
 @satspay_api_router.put(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_admin_key)]
 )
-async def api_charge_update(
-    data: CreateCharge,
-    charge_id: str,
-):
-    charge = await update_charge(charge_id=charge_id, data=data)
-    assert charge
-    return charge.dict()
+async def api_charge_update(charge_id: str, data: CreateCharge) -> Charge:
+    charge = Charge(
+        id=charge_id,
+        **data.dict(),
+    )
+    return await update_charge(charge)
 
 
 @satspay_api_router.get("/api/v1/charges")
@@ -115,17 +104,11 @@ async def api_charge_retrieve(charge_id: str):
 )
 async def api_charge_delete(charge_id: str):
     charge = await get_charge(charge_id)
-
     if not charge:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
         )
-
     await delete_charge(charge_id)
-    return "", HTTPStatus.NO_CONTENT
-
-
-#############################BALANCE##########################
 
 
 @satspay_api_router.get("/api/v1/charges/balance/{charge_ids}")
@@ -150,7 +133,8 @@ async def api_charge_balance(charge_id):
     if charge.must_call_webhook():
         resp = await call_webhook(charge)
         extra = {**charge.config.dict(), **resp}
-        await update_charge(charge_id=charge.id, extra=json.dumps(extra))
+        charge.extra = json.dumps(extra)
+        await update_charge(charge)
 
     return {**charge.public}
 
@@ -179,7 +163,7 @@ async def api_themes_save(
 
 
 @satspay_api_router.get("/api/v1/themes")
-async def api_get_themes(user: User = Depends(check_admin)):
+async def api_get_themes(user: User = Depends(check_admin)) -> list[SatsPayTheme]:
     return await get_themes(user.id)
 
 
