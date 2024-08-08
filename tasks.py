@@ -35,9 +35,8 @@ async def on_invoice_paid(payment: Payment) -> None:
 
     await payment.set_pending(False)
     charge = await check_address_balance(charge_id=charge.id)
-    assert charge
 
     if charge.must_call_webhook():
         resp = await call_webhook(charge)
-        extra = {**charge.config.dict(), **resp}
-        await update_charge(charge_id=charge.id, extra=json.dumps(extra))
+        charge.extra = json.dumps({**charge.config.dict(), **resp})
+        await update_charge(charge)
