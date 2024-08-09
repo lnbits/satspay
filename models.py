@@ -57,22 +57,8 @@ class Charge(BaseModel):
     last_accessed_at: Optional[int] = 0
 
     @property
-    def time_left(self):
-        assert self.last_accessed_at, "Charge has not been accessed yet."
-        life_in_seconds = self.last_accessed_at - self.timestamp
-        life_left_in_seconds = self.time * 60 - life_in_seconds
-        return life_left_in_seconds / 60
-
-    @property
-    def time_elapsed(self):
-        return self.time_left < 0
-
-    @property
     def paid(self):
-        if self.balance >= self.amount:
-            return True
-        else:
-            return False
+        return self.balance >= self.amount
 
     @property
     def config(self) -> ChargeConfig:
@@ -104,9 +90,6 @@ class Charge(BaseModel):
             c["completelink"] = self.completelink
             c["completelinktext"] = self.completelinktext
         return c
-
-    def must_call_webhook(self):
-        return self.webhook and self.paid and self.config.webhook_success is False
 
 
 class CreateSatsPayTheme(BaseModel):

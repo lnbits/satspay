@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import httpx
 from lnbits.settings import settings
 from loguru import logger
@@ -27,13 +25,17 @@ async def call_webhook(charge: Charge):
             return {"webhook_success": False, "webhook_message": str(e)}
 
 
-async def fetch_onchain_balance(charge: Charge):
-    endpoint = (
+def get_endpoint(charge: Charge) -> str:
+    assert charge.config.mempool_endpoint, "No mempool endpoint configured"
+    return (
         f"{charge.config.mempool_endpoint}/testnet"
         if charge.config.network == "Testnet"
-        else charge.config.mempool_endpoint
+        else charge.config.mempool_endpoint or ""
     )
-    assert endpoint
+
+
+async def fetch_onchain_balance(charge: Charge):
+    endpoint = get_endpoint(charge)
     assert charge.onchainaddress
     async with httpx.AsyncClient() as client:
         r = await client.get(endpoint + "/api/address/" + charge.onchainaddress)
@@ -46,7 +48,7 @@ async def fetch_onchain_balance(charge: Charge):
 
 async def fetch_onchain_config(
     wallet_id: str, api_key: str
-) -> Tuple[WalletAccountConfig, str]:
+) -> tuple[WalletAccountConfig, str]:
     async with httpx.AsyncClient() as client:
         headers = {"X-API-KEY": api_key}
         r = await client.get(

@@ -1,13 +1,23 @@
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.templating import Jinja2Templates
 from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
+from lnbits.settings import settings
 from starlette.responses import HTMLResponse
 
 from .crud import get_charge, get_theme
+from .tasks import public_ws_listeners
 
 templates = Jinja2Templates(directory="templates")
 satspay_generic_router = APIRouter()
@@ -42,6 +52,23 @@ async def display_charge(request: Request, charge_id: str):
             "network": charge.config.network,
         },
     )
+
+
+@satspay_generic_router.websocket("/{charge_id}/ws")
+async def websocket_charge(websocket: WebSocket, charge_id: str):
+    charge = await get_charge(charge_id)
+    if not charge:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="Charge link does not exist."
+        )
+    await websocket.accept()
+    public_ws_listeners[charge_id] = websocket
+    try:
+        # Keep the connection alive
+        while settings.lnbits_running:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        delattr(public_ws_listeners, charge_id)
 
 
 @satspay_generic_router.get("/css/{css_id}")
