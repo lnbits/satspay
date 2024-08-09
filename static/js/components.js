@@ -62,7 +62,7 @@ Vue.component('satspay-show-qr', {
     </div>
   </div>`,
   computed: {
-    chargeAmountBtc(){
+    chargeAmountBtc() {
       return (this.chargeAmount / 1e8).toFixed(8)
     }
   }
