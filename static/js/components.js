@@ -38,8 +38,10 @@ Vue.component('satspay-show-qr', {
     <div class="row justify-center q-mb-sm">
       <div class="col text-center">
         <span v-if="type == 'btc'" class="text-subtitle2">Send
-          <span v-text="chargeAmount"></span>
-          sats to this onchain address</span>
+          <strong>
+          <span v-text="chargeAmountBtc"></span> BTC
+          </strong>
+           to this onchain address</span>
         <span v-if="type == 'ln'" class="text-subtitle2">Pay this lightning-network invoice:</span>
         <span v-if="type == 'uqr'" class="text-subtitle2">Scan QR with a wallet supporting BIP21:</span>
       </div>
@@ -58,7 +60,12 @@ Vue.component('satspay-show-qr', {
         <q-btn outline color="grey" @click="copyText(value)">Copy address</q-btn>
       </div>
     </div>
-  </div>`
+  </div>`,
+  computed: {
+    chargeAmountBtc() {
+      return (this.chargeAmount / 1e8).toFixed(8)
+    }
+  }
 })
 
 Vue.component('satspay-time-elapsed', {
