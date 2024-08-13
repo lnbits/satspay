@@ -5,6 +5,8 @@ from lnbits.settings import settings
 from loguru import logger
 from websockets.client import connect
 
+from .crud import get_or_create_satspay_settings
+
 ws_receive_queue: asyncio.Queue[dict] = asyncio.Queue()
 ws_send_queue: asyncio.Queue[dict] = asyncio.Queue()
 
@@ -23,7 +25,8 @@ async def producer_handler(websocket):
 
 
 async def websocket_handler():
-    uri = "wss://mempool.space/testnet/api/v1/ws"
+    satspay_settings = await get_or_create_satspay_settings()
+    uri = f"{satspay_settings.mempool_url}/api/v1/ws".replace("http", "ws")
     logger.info(f"websocket_handler: Connecting to {uri}...")
     async with connect(uri) as websocket:
         logger.info(f"websocket_handler: Connected to {uri}")

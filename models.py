@@ -6,9 +6,14 @@ from typing import Optional
 from fastapi.param_functions import Query
 from pydantic import BaseModel
 
+DEFAULT_MEMPOOL_ENDPOINT = "https://mempool.space"
 DEFAULT_MEMPOOL_CONFIG = (
     '{"mempool_endpoint": "https://mempool.space", "network": "Mainnet"}'
 )
+
+
+class SatspaySettings(BaseModel):
+    mempool_url: str = DEFAULT_MEMPOOL_ENDPOINT
 
 
 class CreateCharge(BaseModel):
@@ -84,8 +89,6 @@ class Charge(BaseModel):
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["paid"] = self.paid
-        c["time_elapsed"] = self.time_elapsed
-        c["time_left"] = self.time_left
         if self.paid:
             c["completelink"] = self.completelink
             c["completelinktext"] = self.completelinktext

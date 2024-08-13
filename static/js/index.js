@@ -1,9 +1,22 @@
 new Vue({
   el: '#vue',
   mixins: [windowMixin],
+  computed: {
+    endpoint() {
+      return `/satspay/api/v1/settings?usr=${this.g.user.id}`
+    }
+  },
   data: function () {
     return {
       settings: {},
+      settings: [
+        {
+          type: 'str',
+          description:
+            'Mempool API URL. default: `https://mempool.space`, use `https://mempool.space/testnet` for testnet',
+          name: 'mempool_url'
+        }
+      ],
       filter: '',
       admin: admin,
       balance: null,

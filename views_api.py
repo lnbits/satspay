@@ -3,6 +3,7 @@ from http import HTTPStatus
 from fastapi import APIRouter, Depends, HTTPException
 from lnbits.core.models import WalletTypeInfo
 from lnbits.decorators import (
+    check_admin,
     require_admin_key,
     require_invoice_key,
 )
@@ -11,11 +12,14 @@ from loguru import logger
 from .crud import (
     create_charge,
     delete_charge,
+    delete_satspay_settings,
     get_charge,
     get_charges,
+    get_or_create_satspay_settings,
+    update_satspay_settings,
 )
 from .helpers import fetch_onchain_config
-from .models import Charge, CreateCharge
+from .models import Charge, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
 
 satspay_api_router = APIRouter()
@@ -76,3 +80,18 @@ async def api_charge_delete(charge_id: str):
         stop_onchain_listener(charge.onchainaddress)
 
     await delete_charge(charge_id)
+
+
+@satspay_api_router.get("/api/v1/settings", dependencies=[Depends(check_admin)])
+async def api_get_or_create_settings() -> SatspaySettings:
+    return await get_or_create_satspay_settings()
+
+
+@satspay_api_router.put("/api/v1/settings", dependencies=[Depends(check_admin)])
+async def api_update_settings(data: SatspaySettings) -> SatspaySettings:
+    return await update_satspay_settings(data)
+
+
+@satspay_api_router.delete("/api/v1/settings", dependencies=[Depends(check_admin)])
+async def api_delete_settings() -> None:
+    await delete_satspay_settings()

@@ -126,6 +126,22 @@ async def m008_add_name_column(db):
     Add 'name' column for storing the name of the charge
     """
     try:
-        await db.execute("ALTER TABLE satspay.charges ADD COLUMN name TEXT;")
+        await db.execute("ALTER TABLE satspay.charges ADD COLUMN name TEXT")
+    except OperationalError:
+        pass
+
+
+async def m009_settings(db):
+    """
+    Add settings table
+    """
+    try:
+        await db.execute(
+            """
+            CREATE TABLE satspay.settings (
+                mempool_url TEXT NOT NULL
+            )
+        """
+        )
     except OperationalError:
         pass
