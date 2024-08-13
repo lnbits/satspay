@@ -8,7 +8,6 @@ from lnbits.helpers import template_renderer
 from starlette.responses import HTMLResponse
 
 from .crud import get_charge, get_theme
-from .helpers import public_charge
 
 templates = Jinja2Templates(directory="templates")
 satspay_generic_router = APIRouter()
@@ -38,7 +37,7 @@ async def display_charge(request: Request, charge_id: str):
         "satspay/display.html",
         {
             "request": request,
-            "charge_data": public_charge(charge),
+            "charge_data": charge.public,
             "mempool_endpoint": charge.config.mempool_endpoint,
             "network": charge.config.network,
         },
