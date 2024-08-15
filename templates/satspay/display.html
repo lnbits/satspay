@@ -4,8 +4,11 @@
     <q-card>
       <q-card-section class="text-center">
         <div class="text-h4">${charge.name || 'LNbits SatsPay'}</div>
-        <div class="text-subtitle1" v-for="line in charge.description.split('\n')" >
-            ${line}
+        <div
+          class="text-subtitle1"
+          v-for="line in charge.description.split('\n')"
+        >
+          ${line}
         </div>
       </q-card-section>
       <satspay-time-elapsed
@@ -187,11 +190,7 @@
   </div>
 </div>
 {% endblock %} {% block styles %} {% if custom_css %}
-<link
-  href="/satspay/css/{{ custom_css }}"
-  rel="stylesheet"
-  type="text/css"
-/>
+<link href="/satspay/css/{{ custom_css }}" rel="stylesheet" type="text/css" />
 {% endif %}
 <style>
   header button.q-btn-dropdown {
