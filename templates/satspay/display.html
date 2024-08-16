@@ -199,7 +199,7 @@
 </style>
 {% endblock %} {% block scripts %}
 <script>
-  const charge = {{ charge_data|tojson }};
+  const charge_data = JSON.parse({{ charge_data|tojson }});
   const network = "{{ network }}";
 </script>
 <script src="{{ static_url_for('satspay/static', path='js/utils.js') }}"></script>
