@@ -8,6 +8,8 @@ new Vue({
   },
   data: function () {
     return {
+      currencies: [],
+      fiatRates: {},
       settings: {},
       settings: [
         {
@@ -134,7 +136,8 @@ new Vue({
           description: '',
           custom_css: '',
           time: null,
-          amount: null
+          amount: null,
+          currency: 'satoshis',
         }
       },
       formDialogThemes: {
@@ -376,7 +379,19 @@ new Vue({
         this.chargeLinks,
         'charges'
       )
-    }
+    },
+    updateFiatRate(currency) {
+      LNbits.api
+        .request('GET', '/lnurlp/api/v1/rate/' + currency, null)
+        .then(response => {
+          let rates = _.clone(this.fiatRates)
+          rates[currency] = response.data.rate
+          this.fiatRates = rates
+        })
+        .catch(err => {
+          LNbits.utils.notifyApiError(err)
+        })
+    },
   },
   created: async function () {
     if (this.admin == 'True') {
@@ -385,5 +400,13 @@ new Vue({
     await this.getCharges()
     await this.getWalletConfig()
     await this.getWalletLinks()
+    LNbits.api
+      .request('GET', '/api/v1/currencies')
+      .then(response => {
+        this.currencies = ['satoshis', ...response.data]
+      })
+      .catch(err => {
+        LNbits.utils.notifyApiError(err)
+      })
   }
 })
