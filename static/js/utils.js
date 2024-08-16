@@ -13,13 +13,22 @@ const retryWithDelay = async function (fn, retryCount = 0) {
   }
 }
 
+const updateProgress = function (charge) {
+  const now = parseInt(new Date().getTime() / 1000)
+  const timeLeft = now - charge.timestamp
+  // time is in minutes
+  percent = timeLeft < 0 ? 1 : parseInt((timeLeft / charge.time) * 60)
+  charge.progress = charge.paid ? 1 : percent
+  charge.timeLeft = secondsToTime(timeLeft)
+  charge.timeElapsed = timeLeft < 0
+  console.log(charge)
+  return charge
+}
+
 const mapCharge = (obj, oldObj = {}) => {
-  const charge = {...oldObj, ...obj}
-
-  charge.progress = obj.time_left < 0 ? 1 : 1 - obj.time_left / obj.time
-  charge.time = minutesToTime(obj.time)
-  charge.timeLeft = minutesToTime(obj.time_left)
-
+  let charge = {...oldObj, ...obj}
+  charge = updateProgress(charge)
+  charge.paid = charge.amount == charge.balance
   charge.displayUrl = ['/satspay/', obj.id].join('')
   charge.expanded = oldObj.expanded || false
   charge.pendingBalance = oldObj.pendingBalance || 0
@@ -32,5 +41,5 @@ const mapCSS = (obj, oldObj = {}) => {
   return theme
 }
 
-const minutesToTime = min =>
-  min > 0 ? new Date(min * 1000).toISOString().substring(14, 19) : ''
+const secondsToTime = seconds =>
+  seconds > 0 ? new Date(seconds * 1000).toISOString().substring(14, 19) : ''

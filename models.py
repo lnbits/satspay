@@ -6,9 +6,14 @@ from typing import Optional
 from fastapi.param_functions import Query
 from pydantic import BaseModel
 
+DEFAULT_MEMPOOL_ENDPOINT = "https://mempool.space"
 DEFAULT_MEMPOOL_CONFIG = (
     '{"mempool_endpoint": "https://mempool.space", "network": "Mainnet"}'
 )
+
+
+class SatspaySettings(BaseModel):
+    mempool_url: str = DEFAULT_MEMPOOL_ENDPOINT
 
 
 class CreateCharge(BaseModel):
@@ -57,22 +62,8 @@ class Charge(BaseModel):
     last_accessed_at: Optional[int] = 0
 
     @property
-    def time_left(self):
-        assert self.last_accessed_at, "Charge has not been accessed yet."
-        life_in_seconds = self.last_accessed_at - self.timestamp
-        life_left_in_seconds = self.time * 60 - life_in_seconds
-        return life_left_in_seconds / 60
-
-    @property
-    def time_elapsed(self):
-        return self.time_left < 0
-
-    @property
     def paid(self):
-        if self.balance >= self.amount:
-            return True
-        else:
-            return False
+        return self.balance >= self.amount
 
     @property
     def config(self) -> ChargeConfig:
@@ -98,15 +89,10 @@ class Charge(BaseModel):
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["paid"] = self.paid
-        c["time_elapsed"] = self.time_elapsed
-        c["time_left"] = self.time_left
         if self.paid:
             c["completelink"] = self.completelink
             c["completelinktext"] = self.completelinktext
         return c
-
-    def must_call_webhook(self):
-        return self.webhook and self.paid and self.config.webhook_success is False
 
 
 class CreateSatsPayTheme(BaseModel):

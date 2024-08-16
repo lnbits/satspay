@@ -1,17 +1,15 @@
 import json
-from typing import List, Optional
+from typing import Optional
 
-from lnbits.core.crud import get_standalone_payment
 from lnbits.core.services import create_invoice
 from lnbits.db import Database
-from lnbits.helpers import urlsafe_short_hash
-from loguru import logger
+from lnbits.helpers import insert_query, update_query, urlsafe_short_hash
 
-from .helpers import fetch_onchain_balance
 from .models import (
     Charge,
     CreateCharge,
     CreateSatsPayTheme,
+    SatspaySettings,
     SatsPayTheme,
     WalletAccountConfig,
 )
@@ -105,19 +103,18 @@ async def update_charge(charge: Charge) -> Charge:
 
 
 async def get_charge(charge_id: str) -> Optional[Charge]:
-    await db.execute(
-        f"""
-    UPDATE satspay.charges
-    SET last_accessed_at = {db.timestamp_now} WHERE id = ?
-    """,
-        (charge_id,),
-    )
-
     row = await db.fetchone("SELECT * FROM satspay.charges WHERE id = ?", (charge_id,))
     return Charge(**row) if row else None
 
 
-async def get_charges(user: str) -> List[Charge]:
+async def get_charge_by_onchain_address(onchain_address: str) -> Optional[Charge]:
+    row = await db.fetchone(
+        "SELECT * FROM satspay.charges WHERE onchainaddress = ?", (onchain_address,)
+    )
+    return Charge(**row) if row else None
+
+
+async def get_charges(user: str) -> list[Charge]:
     await db.execute(
         f"""
     UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE "user"  = ?
@@ -133,33 +130,6 @@ async def get_charges(user: str) -> List[Charge]:
 
 async def delete_charge(charge_id: str) -> None:
     await db.execute("DELETE FROM satspay.charges WHERE id = ?", (charge_id,))
-
-
-async def check_address_balance(charge_id: str) -> Charge:
-    charge = await get_charge(charge_id)
-    assert charge, "balance check failed, charge does not exist"
-    if charge.paid:
-        return charge
-    if charge.onchainaddress:
-        try:
-            balance = await fetch_onchain_balance(charge)
-            confirmed = int(balance["confirmed"])
-            unconfirmed = int(balance["unconfirmed"])
-            if confirmed != charge.balance or unconfirmed != charge.pending:
-                if charge.zeroconf:
-                    confirmed += unconfirmed
-                charge.balance = confirmed
-                charge.pending = unconfirmed
-                return await update_charge(charge)
-        except Exception as e:
-            logger.warning(e)
-    if charge.lnbitswallet and charge.payment_hash:
-        payment = await get_standalone_payment(charge.payment_hash)
-        status = (await payment.check_status()).success if payment else False
-        if status:
-            charge.balance = charge.amount
-            return await update_charge(charge)
-    return charge
 
 
 async def create_theme(data: CreateSatsPayTheme, user_id: str) -> SatsPayTheme:
@@ -203,7 +173,7 @@ async def get_theme(css_id: str) -> Optional[SatsPayTheme]:
     return SatsPayTheme(**row) if row else None
 
 
-async def get_themes(user_id: str) -> List[SatsPayTheme]:
+async def get_themes(user_id: str) -> list[SatsPayTheme]:
     rows = await db.fetchall(
         """
         SELECT * FROM satspay.themes WHERE "user" = ? ORDER BY title DESC
@@ -215,3 +185,28 @@ async def get_themes(user_id: str) -> List[SatsPayTheme]:
 
 async def delete_theme(theme_id: str) -> None:
     await db.execute("DELETE FROM satspay.themes WHERE css_id = ?", (theme_id,))
+
+
+async def get_or_create_satspay_settings() -> SatspaySettings:
+    row = await db.fetchone("SELECT * FROM satspay.settings LIMIT 1")
+    if row:
+        return SatspaySettings(**row)
+    else:
+        settings = SatspaySettings()
+        await db.execute(
+            insert_query("satspay.settings", settings), (*settings.dict().values(),)
+        )
+        return settings
+
+
+async def update_satspay_settings(settings: SatspaySettings) -> SatspaySettings:
+    await db.execute(
+        # 3rd arguments `WHERE clause` is empty for settings
+        update_query("satspay.settings", settings, ""),
+        (*settings.dict().values(),),
+    )
+    return settings
+
+
+async def delete_satspay_settings() -> None:
+    await db.execute("DELETE FROM satspay.settings")

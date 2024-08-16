@@ -82,7 +82,7 @@ Vue.component('satspay-time-elapsed', {
       <div class="absolute-full flex flex-center text-white text-subtitle2">
         <span v-if="+charge.timeLeft <= 0 || charge.paid">{{barText}}</span>
         <div v-else class="full-width">
-          <span class="q-ml-md" style="position: absolute; left: 0">
+          <span class="q-ml-md">
             <q-spinner size="1em" class="q-mr-xs"></q-spinner>
             {{barText}}
           </span>
@@ -92,9 +92,7 @@ Vue.component('satspay-time-elapsed', {
     </q-linear-progress>
   </div>`,
   created() {
-    if (!this.charge.timeLeft && !this.charge.paid) {
-      this.barText = 'Time elapsed'
-    } else if (this.charge.paid) {
+    if (this.charge.paid) {
       this.barText = 'Payment received'
     } else {
       this.barText = 'Awaiting payment...'
