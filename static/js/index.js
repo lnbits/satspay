@@ -137,7 +137,7 @@ new Vue({
           custom_css: '',
           time: null,
           amount: null,
-          currency: 'satoshis',
+          currency: 'satoshis'
         }
       },
       formDialogThemes: {
@@ -391,7 +391,7 @@ new Vue({
         .catch(err => {
           LNbits.utils.notifyApiError(err)
         })
-    },
+    }
   },
   created: async function () {
     if (this.admin == 'True') {
