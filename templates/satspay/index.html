@@ -155,7 +155,6 @@
               <q-td key="timeLeft" :props="props" :class="">
                 <div>{{props.row.timeLeft}}</div>
                 <q-linear-progress
-                  v-if="props.row.timeLeft"
                   :value="props.row.progress"
                   color="secondary"
                 >

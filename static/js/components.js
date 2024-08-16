@@ -72,31 +72,42 @@ Vue.component('satspay-time-elapsed', {
   props: ['charge'],
   data() {
     return {
-      barColor: 'grey',
-      barText: 'Time elapsed'
+      timeSeconds: 0,
+      timeLeft: 60,
+      progress: 0,
+      barColor: 'grey'
     }
   },
   template: `
   <div class="text-center">
-    <q-linear-progress size="30px" :value="charge.progress" :color="barColor">
+    <q-linear-progress size="30px" :value="progress" :color="barColor">
       <div class="absolute-full flex flex-center text-white text-subtitle2">
-        <span v-if="+charge.timeLeft <= 0 || charge.paid">{{barText}}</span>
+        <span v-if="charge.paid">Payment received</span>
+        <span v-else-if="timeSeconds <= 0">Time elapsed</span>
         <div v-else class="full-width">
           <span class="q-ml-md">
             <q-spinner size="1em" class="q-mr-xs"></q-spinner>
-            {{barText}}
+            Awaiting payment...
           </span>
-          <span>{{charge.timeLeft}}</span>
+          <span>{{timeLeft}}</span>
         </div>
       </div>
     </q-linear-progress>
   </div>`,
   created() {
-    if (this.charge.paid) {
-      this.barText = 'Payment received'
-    } else {
-      this.barText = 'Awaiting payment...'
+    this.timeSeconds = this.charge.timeSecondsLeft
+    this.timeLeft = this.charge.timeLeft
+    this.progress = this.charge.progress
+    if (!this.charge.paid && this.timeSeconds > 0) {
       this.barColor = 'secondary'
+      setInterval(() => {
+        if (!this.charge.paid && this.timeSeconds > 0) {
+          this.timeSeconds -= 1
+          this.timeLeft = secondsToTime(this.timeSeconds)
+          this.progress = progress(chargeTimeSeconds, this.timeSeconds)
+          console.log(this.timeSeconds, chargeTimeSeconds, this.progress)
+        }
+      }, 1000)
     }
   }
 })
