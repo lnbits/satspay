@@ -7,6 +7,7 @@ from lnbits.decorators import (
     require_admin_key,
     require_invoice_key,
 )
+from lnbits.utils.exchange_rates import get_fiat_rate_satoshis
 from loguru import logger
 
 from .crud import (
@@ -39,6 +40,16 @@ async def api_charge_create(
             start_onchain_listener(new_address)
         except Exception as exc:
             logger.error(f"Error fetching onchain config: {exc}")
+
+    if not data.amount and not data.currency_amount:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="either amount or currency_amount are required.",
+        )
+
+    if data.currency and data.currency_amount:
+        rate = await get_fiat_rate_satoshis(data.currency)
+        data.amount = round(rate * data.currency_amount)
 
     return await create_charge(
         user=wallet.wallet.user,

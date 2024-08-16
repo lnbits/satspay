@@ -145,3 +145,14 @@ async def m009_settings(db):
         )
     except OperationalError:
         pass
+
+
+async def m009_add_fiat(db):
+    """
+    Add 'currency' and 'currency_amount' columns for storing the fiat amount
+    """
+    try:
+        await db.execute("ALTER TABLE satspay.charges ADD COLUMN currency TEXT")
+        await db.execute("ALTER TABLE satspay.charges ADD COLUMN currency_amount FLOAT")
+    except OperationalError:
+        pass
