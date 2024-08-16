@@ -35,7 +35,8 @@ new Vue({
   },
   methods: {
     initWs: async function () {
-      const url = `wss://${window.location.host}/satspay/${this.charge.id}/ws`
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+      const url = `${protocol}://${window.location.host}/satspay/${this.charge.id}/ws`
       this.ws = new WebSocket(url)
       this.ws.addEventListener('message', async ({data}) => {
         const res = JSON.parse(data.toString())
