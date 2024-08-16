@@ -70,7 +70,7 @@ async def websocket_charge(websocket: WebSocket, charge_id: str):
         while settings.lnbits_running:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        delattr(public_ws_listeners, charge_id)
+        del public_ws_listeners[charge_id]
 
 
 @satspay_generic_router.get("/css/{css_id}")
