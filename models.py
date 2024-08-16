@@ -25,10 +25,12 @@ class CreateCharge(BaseModel):
     completelink: str = Query(None)
     completelinktext: str = Query("Back to Merchant")
     time: int = Query(..., ge=1)
-    amount: int = Query(..., ge=1)
+    amount: Optional[int] = Query(None, ge=1)
     zeroconf: bool = Query(False)
     extra: str = DEFAULT_MEMPOOL_CONFIG
     custom_css: Optional[str] = Query(None)
+    currency: str = Query(None)
+    currency_amount: Optional[float] = Query(None)
 
 
 class ChargeConfig(BaseModel):
@@ -60,6 +62,8 @@ class Charge(BaseModel):
     pending: Optional[int] = 0
     timestamp: int
     last_accessed_at: Optional[int] = 0
+    currency: Optional[str] = None
+    currency_amount: Optional[float] = None
 
     @property
     def paid(self):

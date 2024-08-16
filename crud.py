@@ -32,6 +32,7 @@ async def create_charge(
             {"mempool_endpoint": config.mempool_endpoint, "network": config.network}
         )
 
+    assert data.amount, "Amount is required"
     if data.lnbitswallet:
         payment_hash, payment_request = await create_invoice(
             wallet_id=data.lnbitswallet,

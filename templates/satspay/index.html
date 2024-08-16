@@ -382,12 +382,37 @@
           label="*Description"
         ></q-input>
 
+        <div class="row q-col-gutter-sm">
+          <div class="col">
+            <q-select
+              dense
+              :options="currencies"
+              v-model="formDialogCharge.data.currency"
+              :display-value="formDialogCharge.data.currency || 'satoshis'"
+              label="Currency"
+              :hint="'Converted to satoshis at each payment. ' + (formDialogCharge.data.currency && fiatRates[formDialogCharge.data.currency] ? `Currently 1 ${formDialogCharge.data.currency} = ${fiatRates[formDialogCharge.data.currency]} sat` : '')"
+              @input="updateFiatRate"
+            />
+          </div>
+        </div>
+
         <q-input
           filled
           dense
           v-model.trim="formDialogCharge.data.amount"
           type="number"
           label="*Amount (sats)"
+          v-if="formDialogCharge.data.currency === 'satoshis'"
+        ></q-input>
+
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialogCharge.data.currency_amount"
+          type="number"
+          :label="'*Amount (' + formDialogCharge.data.currency + ')'"
+          v-if="formDialogCharge.data.currency !== 'satoshis'"
+          step="0.01"
         ></q-input>
 
         <q-input
@@ -513,7 +538,7 @@
             color="primary"
             :disable="
                 formDialogCharge.data.time == null ||
-                formDialogCharge.data.amount == null"
+                (formDialogCharge.data.amount == null && formDialogCharge.data.currency_amount == null)"
             type="submit"
             >Create Charge</q-btn
           >
