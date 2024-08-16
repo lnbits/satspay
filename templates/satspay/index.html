@@ -154,7 +154,7 @@
               </q-td>
               <q-td key="timeLeft" :props="props" :class="">
                 <div v-if="props.row.paid">
-                  <q-linear-progress value="1"></q-linear-progress>
+                  <q-linear-progress :value="1"></q-linear-progress>
                 </div>
                 <div v-else>
                   <div>{{props.row.timeLeft}}</div>
