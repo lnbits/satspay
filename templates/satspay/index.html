@@ -154,15 +154,15 @@
               </q-td>
               <q-td key="timeLeft" :props="props" :class="">
                 <div v-if="props.row.paid">
-                    <q-linear-progress value="1"></q-linear-progress>
+                  <q-linear-progress value="1"></q-linear-progress>
                 </div>
                 <div v-else>
-                    <div>{{props.row.timeLeft}}</div>
-                    <q-linear-progress
-                      :value="props.row.progress"
-                      color="secondary"
-                    >
-                    </q-linear-progress>
+                  <div>{{props.row.timeLeft}}</div>
+                  <q-linear-progress
+                    :value="props.row.progress"
+                    color="secondary"
+                  >
+                  </q-linear-progress>
                 </div>
               </q-td>
               <q-td key="time to pay" :props="props" :class="">
@@ -267,17 +267,6 @@
                       class="float-left q-mr-lg"
                       >Details</q-btn
                     >
-                    <q-btn
-                      unelevated
-                      outline
-                      type="a"
-                      @click="refreshBalance(props.row)"
-                      target="_blank"
-                      class="float-left"
-                      >Refresh Balance</q-btn
-                    >
-                  </div>
-                  <div class="col-4 q-pr-lg">
                     <q-btn
                       unelevated
                       color="pink"
