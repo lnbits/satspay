@@ -156,7 +156,6 @@ new Vue({
       this.formDialogThemes.show = false
     },
     cancelCharge: function (data) {
-      this.formDialogCharge.data.description = null
       this.formDialogCharge.data.description = ''
       this.formDialogCharge.data.onchain = false
       this.formDialogCharge.data.onchainwallet = ''
@@ -342,7 +341,8 @@ new Vue({
           lnbits: false,
           description: '',
           time: null,
-          amount: null
+          amount: null,
+          currency: 'satoshis'
         }
       } catch (error) {
         LNbits.utils.notifyApiError(error)
@@ -404,6 +404,7 @@ new Vue({
       .request('GET', '/api/v1/currencies')
       .then(response => {
         this.currencies = ['satoshis', ...response.data]
+        this.formDialogCharge.data.currency = 'satoshis'
       })
       .catch(err => {
         LNbits.utils.notifyApiError(err)

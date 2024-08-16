@@ -11,10 +11,7 @@
           ${line}
         </div>
       </q-card-section>
-      <satspay-time-elapsed
-        :charge="charge"
-        v-if="!charge.paid"
-      ></satspay-time-elapsed>
+      <satspay-time-elapsed :charge="charge"></satspay-time-elapsed>
       <q-card-section>
         <q-list>
           <q-item-label header

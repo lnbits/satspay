@@ -147,7 +147,7 @@ async def m009_settings(db):
         pass
 
 
-async def m009_add_fiat(db):
+async def m010_add_fiat(db):
     """
     Add 'currency' and 'currency_amount' columns for storing the fiat amount
     """
