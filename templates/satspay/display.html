@@ -4,7 +4,12 @@
     <q-card>
       <q-card-section class="text-center">
         <div class="text-h4">${charge.name || 'LNbits SatsPay'}</div>
-        <div class="text-subtitle1">${charge.description}</div>
+        <div
+          class="text-subtitle1"
+          v-for="line in charge.description.split('\n')"
+        >
+          ${line}
+        </div>
       </q-card-section>
       <satspay-time-elapsed
         :charge="charge"
@@ -184,12 +189,8 @@
     </q-card>
   </div>
 </div>
-{% endblock %} {% block styles %} {% if charge_data.custom_css %}
-<link
-  href="/satspay/css/{{ charge_data.custom_css }}"
-  rel="stylesheet"
-  type="text/css"
-/>
+{% endblock %} {% block styles %} {% if custom_css %}
+<link href="/satspay/css/{{ custom_css }}" rel="stylesheet" type="text/css" />
 {% endif %}
 <style>
   header button.q-btn-dropdown {
@@ -198,7 +199,7 @@
 </style>
 {% endblock %} {% block scripts %}
 <script>
-  const charge = {{ charge_data|tojson }};
+  const charge_data = JSON.parse({{ charge_data|tojson }});
   const network = "{{ network }}";
 </script>
 <script src="{{ static_url_for('satspay/static', path='js/utils.js') }}"></script>

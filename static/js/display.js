@@ -4,7 +4,7 @@ new Vue({
   delimiters: ['${', '}'],
   data() {
     return {
-      charge: mapCharge(charge),
+      charge: mapCharge(charge_data),
       network: network,
       pendingFunds: 0,
       ws: null,

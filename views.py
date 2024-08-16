@@ -1,3 +1,4 @@
+import json
 from http import HTTPStatus
 
 from fastapi import (
@@ -47,7 +48,8 @@ async def display_charge(request: Request, charge_id: str):
         "satspay/display.html",
         {
             "request": request,
-            "charge_data": charge.public,
+            "charge_data": json.dumps(charge.public),
+            "custom_css": charge.custom_css,
             "mempool_endpoint": charge.config.mempool_endpoint,
             "network": charge.config.network,
         },
