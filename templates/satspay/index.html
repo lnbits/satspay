@@ -134,6 +134,17 @@
                     >paid</a
                   >
                 </q-badge>
+                <q-badge
+                  v-else-if="props.row.timeSecondsLeft <= 0"
+                  outline
+                  color="primary"
+                  ><a
+                    :href="props.row.displayUrl"
+                    target="_blank"
+                    style="color: unset; text-decoration: none"
+                    >expired</a
+                  >
+                </q-badge>
 
                 <q-badge v-else outline color="primary"
                   ><a
