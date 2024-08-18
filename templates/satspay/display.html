@@ -48,15 +48,15 @@
               </q-badge>
             </q-item-section>
           </q-item>
-          <q-separator spaced v-if="pendingFunds"></q-separator>
-          <q-item v-if="pendingFunds" dense>
+          <q-separator spaced v-if="charge.pending"></q-separator>
+          <q-item v-if="charge.pending" dense>
             <q-item-section>
               <q-item-label>Amount pending:</q-item-label>
             </q-item-section>
 
             <q-item-section side>
               <q-badge color="gray">
-                <span class="text-subtitle2">${pendingFunds} sats</span>
+                <span class="text-subtitle2">${charge.pending} sats</span>
               </q-badge>
             </q-item-section>
           </q-item>
@@ -91,7 +91,6 @@
             <satspay-paid
               v-else-if="charge.paid"
               :charge="charge"
-              :timer="timer"
             ></satspay-paid>
           </div>
         </div>
@@ -161,7 +160,7 @@
                 <a
                   class="text-secondary"
                   style="color: unset"
-                  :href="'https://mempool.space/address/' + charge.onchainaddress"
+                  :href="mempoolLink"
                   target="_blank"
                   ><span
                     class="text-subtitle1"

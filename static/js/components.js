@@ -1,7 +1,7 @@
 Vue.component(VueQrcode.name, VueQrcode)
 
 Vue.component('satspay-paid', {
-  props: ['charge', 'timer'],
+  props: ['charge'],
   template: `
   <div>
     <q-icon
@@ -15,7 +15,6 @@ Vue.component('satspay-paid', {
           outline
           v-if="charge.completelink"
           :loading="charge.paid"
-          :percentage="timer"
           type="a"
           :href="charge.completelink"
           :label="charge.completelinktext"
@@ -98,14 +97,21 @@ Vue.component('satspay-time-elapsed', {
     this.timeSeconds = this.charge.timeSecondsLeft
     this.timeLeft = this.charge.timeLeft
     this.progress = this.charge.progress
+    if (this.charge.paid) {
+      this.barColor = 'positive'
+      this.progress = 1
+    }
     if (!this.charge.paid && this.timeSeconds > 0) {
       this.barColor = 'secondary'
       setInterval(() => {
         if (!this.charge.paid && this.timeSeconds > 0) {
           this.timeSeconds -= 1
           this.timeLeft = secondsToTime(this.timeSeconds)
-          this.progress = progress(chargeTimeSeconds, this.timeSeconds)
-          console.log(this.timeSeconds, chargeTimeSeconds, this.progress)
+          this.progress = progress(this.charge.time * 60, this.timeSeconds)
+        }
+        if (this.charge.paid) {
+          this.barColor = 'positive'
+          this.progress = 1
         }
       }, 1000)
     }

@@ -6,19 +6,22 @@ new Vue({
     return {
       charge: mapCharge(charge_data),
       network: network,
-      pendingFunds: 0,
       ws: null,
-      newProgress: 0.4,
-      counter: 1,
       wallet: {
         inkey: ''
       },
-      timer: 0,
-      cancelListener: () => {},
       tab: 'uqr'
     }
   },
   computed: {
+    mempoolLink() {
+      const onchainaddress = this.charge.onchainaddress
+      if (this.network === 'Testnet') {
+        return `https://mempool.space/testnet/address/${onchainaddress}`
+      } else {
+        return `https://mempool.space/address/${onchainaddress}`
+      }
+    },
     unifiedQR() {
       const bitcoin = (this.charge.onchainaddress || '').toUpperCase()
       let queryString = `bitcoin:${bitcoin}?amount=${(
@@ -44,8 +47,9 @@ new Vue({
       this.ws.addEventListener('message', async ({data}) => {
         const res = JSON.parse(data.toString())
         this.charge.balance = res.balance
+        this.charge.pending = res.pending
         if (res.paid) {
-          this.charge.progress = 0
+          this.charge.progress = 1
           this.charge.paid = true
           this.$q.notify({
             type: 'positive',
@@ -55,13 +59,11 @@ new Vue({
         }
       })
       this.ws.addEventListener('close', async () => {
-        console.log('ws closed')
         this.$q.notify({
           type: 'negative',
           message: 'WebSocket connection closed. Retrying...',
           timeout: 1000
         })
-        console.log('retrying ws connection...')
         setTimeout(() => {
           this.initWs()
         }, 3000)
