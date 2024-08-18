@@ -30,10 +30,10 @@ async def send_success_websocket(charge: Charge):
         if charge_id == charge.id:
             await listener.send_json(
                 {
-                    "paid": True,
+                    "paid": charge.paid,
                     "balance": charge.balance,
                     "pending": charge.pending,
-                    "completelink": charge.completelink,
+                    "completelink": charge.completelink if charge.paid else None,
                 }
             )
 
@@ -96,19 +96,14 @@ def sum_transactions(address: str, txs):
 async def _handle_ws_message(address: str, data: dict):
     charge = await get_charge_by_onchain_address(address)
     assert charge, f"Charge with address `{address}` does not exist."
-
-    for charge_id, listener in public_ws_listeners.items():
-        if charge_id == charge.id:
-            await listener.send_json(data)
-
     unconfirmed_balance = sum_transactions(address, data.get("mempool", []))
     confirmed_balance = sum_transactions(address, data.get("confirmed", []))
     if charge.zeroconf:
         confirmed_balance += unconfirmed_balance
     charge.balance = confirmed_balance
     charge.pending = unconfirmed_balance
+    await send_success_websocket(charge)
     if charge.paid:
-        await send_success_websocket(charge)
         stop_onchain_listener(address)
         if charge.webhook:
             resp = await call_webhook(charge)
