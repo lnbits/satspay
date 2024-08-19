@@ -103,6 +103,8 @@ async def check_charge_balance(charge: Charge) -> Charge:
         except Exception as exc:
             logger.warning(f"Charge check onchain address failed with: {exc!s}")
 
+    charge.paid = charge.balance >= charge.amount
+
     if charge.paid and charge.webhook:
         resp = await call_webhook(charge)
         charge.extra = json.dumps({**charge.config.dict(), **resp})

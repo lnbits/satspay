@@ -88,11 +88,11 @@ class Charge(BaseModel):
             "timestamp",
             "custom_css",
             "paid",
+            "completelinktext",
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         if self.paid:
             c["completelink"] = self.completelink
-            c["completelinktext"] = self.completelinktext
         return c
 
 
