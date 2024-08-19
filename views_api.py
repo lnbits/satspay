@@ -64,15 +64,15 @@ async def api_charges_retrieve(
 
 
 @satspay_api_router.get(
-    "/api/v1/charge/{charge_id}", dependencies=[Depends(require_admin_key)]
+    "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
 )
-async def api_charge_retrieve(charge_id: str) -> Charge:
+async def api_charge_retrieve(charge_id: str) -> dict:
     charge = await get_charge(charge_id)
     if not charge:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
         )
-    return charge
+    return charge.public
 
 
 @satspay_api_router.get(

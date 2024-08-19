@@ -64,10 +64,7 @@ class Charge(BaseModel):
     last_accessed_at: Optional[int] = 0
     currency: Optional[str] = None
     currency_amount: Optional[float] = None
-
-    @property
-    def paid(self):
-        return self.balance >= self.amount
+    paid: bool = False
 
     @property
     def config(self) -> ChargeConfig:
@@ -90,9 +87,9 @@ class Charge(BaseModel):
             "pending",
             "timestamp",
             "custom_css",
+            "paid",
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
-        c["paid"] = self.paid
         if self.paid:
             c["completelink"] = self.completelink
             c["completelinktext"] = self.completelinktext

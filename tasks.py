@@ -51,6 +51,7 @@ async def on_invoice_paid(payment: Payment) -> None:
 
     if charge.lnbitswallet and charge.payment_hash == payment.payment_hash:
         charge.balance = int(payment.amount / 1000)
+        charge.paid = True
         await send_success_websocket(charge)
         if charge.webhook:
             resp = await call_webhook(charge)
@@ -102,6 +103,7 @@ async def _handle_ws_message(address: str, data: dict):
         confirmed_balance += unconfirmed_balance
     charge.balance = confirmed_balance
     charge.pending = unconfirmed_balance
+    charge.paid = charge.balance >= charge.amount
     await send_success_websocket(charge)
     if charge.paid:
         stop_onchain_listener(address)
