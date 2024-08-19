@@ -84,8 +84,16 @@ async def api_charge_check_balance(charge_id: str) -> Charge:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
         )
+    if charge.paid:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="Charge is already paid."
+        )
+    balance_before = charge.balance
+    pending_before = charge.pending
     charge = await check_charge_balance(charge)
-    return await update_charge(charge)
+    if charge.balance != balance_before or charge.pending != pending_before:
+        charge = await update_charge(charge)
+    return charge
 
 
 @satspay_api_router.delete(
