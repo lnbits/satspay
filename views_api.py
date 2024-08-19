@@ -65,8 +65,9 @@ async def api_charges_retrieve(
 
 """
 This endpoint is used by the woocommerce plugin to check if the status of a charge
-is paid (if `res['paid']` == `true`). you can refresh the success page of the webshop to
-trigger this endpoint. useful if the webhook is not working or fails for some reason.
+is paid. you can refresh the success page of the webshop to trigger this endpoint.
+useful if the webhook is not working or fails for some reason.
+https://github.com/lnbits/woocommerce-payment-gateway/blob/main/lnbits.php#L312
 """
 @satspay_api_router.get(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
