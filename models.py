@@ -34,7 +34,7 @@ class CreateCharge(BaseModel):
 
 
 class ChargeConfig(BaseModel):
-    mempool_endpoint: Optional[str]
+    mempool_endpoint: str
     network: Optional[str]
     webhook_message: Optional[str]
     webhook_success: bool = False
@@ -117,3 +117,8 @@ class WalletAccountConfig(BaseModel):
     change_gap_limit: int
     sats_denominated: bool
     network: str
+
+
+class OnchainBalance(BaseModel):
+    confirmed: int
+    unconfirmed: int

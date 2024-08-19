@@ -15,11 +15,14 @@ const retryWithDelay = async function (fn, retryCount = 0) {
 
 const mapCharge = (obj, oldObj = {}) => {
   let charge = {...oldObj, ...obj}
-  charge.paid = charge.amount == charge.balance
+  charge.paid = charge.balance >= charge.amount
   charge.displayUrl = ['/satspay/', obj.id].join('')
   charge.expanded = oldObj.expanded || false
-  charge.pendingBalance = oldObj.pendingBalance || 0
-  charge.extra = charge.extra ? JSON.parse(charge.extra) : charge.extra
+  charge.pending = oldObj.pending || 0
+  charge.extra =
+    charge.extra && charge.extra instanceof String
+      ? JSON.parse(charge.extra)
+      : charge.extra
   const now = new Date().getTime() / 1000
   const chargeTimeSeconds = charge.time * 60
   const secondsSinceCreated = chargeTimeSeconds - now + charge.timestamp

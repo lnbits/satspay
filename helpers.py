@@ -1,8 +1,9 @@
 import httpx
+from lnbits.core.crud import get_standalone_payment
 from lnbits.settings import settings
 from loguru import logger
 
-from .models import Charge, WalletAccountConfig
+from .models import Charge, OnchainBalance, WalletAccountConfig
 
 
 async def call_webhook(charge: Charge):
@@ -34,16 +35,16 @@ def get_endpoint(charge: Charge) -> str:
     )
 
 
-async def fetch_onchain_balance(charge: Charge):
-    endpoint = get_endpoint(charge)
-    assert charge.onchainaddress
+async def fetch_onchain_balance(
+    onchain_address: str, mempool_endpoint: str
+) -> OnchainBalance:
     async with httpx.AsyncClient() as client:
-        r = await client.get(endpoint + "/api/address/" + charge.onchainaddress)
-        resp = r.json()
-        return {
-            "confirmed": resp["chain_stats"]["funded_txo_sum"],
-            "unconfirmed": resp["mempool_stats"]["funded_txo_sum"],
-        }
+        res = await client.get(f"{mempool_endpoint}/api/address/{onchain_address}")
+        res.raise_for_status()
+        data = res.json()
+        confirmed = data["chain_stats"]["funded_txo_sum"]
+        unconfirmed = data["mempool_stats"]["funded_txo_sum"]
+        return OnchainBalance(confirmed=confirmed, unconfirmed=unconfirmed)
 
 
 async def fetch_onchain_config(
@@ -69,3 +70,36 @@ async def fetch_onchain_config(
             raise ValueError("Cannot fetch new address!")
 
         return WalletAccountConfig.parse_obj(config), address_data["address"]
+
+
+async def check_charge_balance(charge: Charge) -> Charge:
+    if charge.paid:
+        return charge
+
+    if charge.lnbitswallet and charge.payment_hash:
+        payment = await get_standalone_payment(charge.payment_hash)
+        assert payment, "Payment not found."
+        status = await payment.check_status()
+        if status.success:
+            charge.balance = charge.amount
+            return charge
+
+    if charge.onchainaddress:
+        try:
+            balance = await fetch_onchain_balance(
+                charge.onchainaddress, charge.config.mempool_endpoint
+            )
+            if (
+                balance.confirmed != charge.balance
+                or balance.unconfirmed != charge.pending
+            ):
+                charge.balance = (
+                    balance.confirmed + balance.unconfirmed
+                    if charge.zeroconf
+                    else balance.confirmed
+                )
+                charge.pending = balance.unconfirmed
+        except Exception as exc:
+            logger.warning(f"Charge check onchain address failed with: {exc!s}")
+
+    return charge

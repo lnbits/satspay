@@ -20,7 +20,7 @@ db = Database("ext_satspay")
 async def create_charge(
     user: str,
     data: CreateCharge,
-    config: Optional[WalletAccountConfig],
+    config: Optional[WalletAccountConfig] = None,
     onchainaddress: Optional[str] = None,
 ) -> Charge:
     data = CreateCharge(**data.dict())

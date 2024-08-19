@@ -185,10 +185,8 @@
               <q-td key="balance" :props="props" :class="">
                 <div>{{props.row.balance}}</div>
               </q-td>
-              <q-td key="pendingBalance" :props="props" :class="">
-                <div>
-                  {{props.row.pendingBalance ? props.row.pendingBalance : ''}}
-                </div>
+              <q-td key="pending" :props="props" :class="">
+                <div>{{props.row.pending ? props.row.pending: ''}}</div>
               </q-td>
               <q-td key="onchain address" :props="props" :class="">
                 <a
@@ -277,6 +275,15 @@
                       target="_blank"
                       class="float-left q-mr-lg"
                       >Details</q-btn
+                    >
+                    <q-btn
+                      unelevated
+                      outline
+                      icon="refresh"
+                      @click="checkChargeBalance(props.row.id)"
+                      class="float-left q-mr-lg"
+                      v-if="!props.row.paid"
+                      >Check charge balance</q-btn
                     >
                     <q-btn
                       unelevated

@@ -73,10 +73,10 @@ new Vue({
             field: 'balance'
           },
           {
-            name: 'pendingBalance',
+            name: 'pending',
             align: 'left',
             label: 'Pending Balance',
-            field: 'pendingBalance'
+            field: 'pending'
           },
           {
             name: 'onchain address',
@@ -306,17 +306,15 @@ new Vue({
     },
 
     deleteTheme: function (themeId) {
-      const theme = _.findWhere(this.themeLinks, {id: themeId})
       LNbits.utils
         .confirmDialog('Are you sure you want to delete this theme?')
         .onOk(async () => {
           try {
-            const response = await LNbits.api.request(
+            await LNbits.api.request(
               'DELETE',
-              '/satspay/api/v1/themes/' + themeId,
+              `/satspay/api/v1/themes/${themeId}`,
               this.g.user.wallets[0].adminkey
             )
-
             this.themeLinks = _.reject(this.themeLinks, function (obj) {
               return obj.css_id === themeId
             })
@@ -348,16 +346,14 @@ new Vue({
         LNbits.utils.notifyApiError(error)
       }
     },
-
     deleteChargeLink: function (chargeId) {
-      const link = _.findWhere(this.chargeLinks, {id: chargeId})
       LNbits.utils
         .confirmDialog('Are you sure you want to delete this pay link?')
         .onOk(async () => {
           try {
-            const response = await LNbits.api.request(
+            await LNbits.api.request(
               'DELETE',
-              '/satspay/api/v1/charge/' + chargeId,
+              `/satspay/api/v1/charge/${chargeId}`,
               this.g.user.wallets[0].adminkey
             )
 
@@ -367,6 +363,38 @@ new Vue({
           } catch (error) {
             LNbits.utils.notifyApiError(error)
           }
+        })
+    },
+    checkChargeBalance: function (chargeId) {
+      LNbits.api
+        .request(
+          'GET',
+          `/satspay/api/v1/charge/balance/${chargeId}`,
+          this.g.user.wallets[0].adminkey
+        )
+        .then(response => {
+          const charge = _.findWhere(this.chargeLinks, {id: chargeId})
+          charge.balance = response.data.balance
+          charge.pending = response.data.pending
+          charge.paid = charge.balance >= charge.amount
+          const index = this.chargeLinks.findIndex(c => c.id === chargeId)
+          this.chargeLinks[index] = mapCharge(charge, this.chargeLinks[index])
+          if (charge.paid) {
+            LNbits.utils.notify('Charge paid')
+            this.$q.notify({
+              message: 'Charge paid',
+              color: 'positive'
+            })
+          } else {
+            this.$q.notify({
+              message: 'Charge still pending...',
+              color: 'negative'
+            })
+          }
+        })
+        .catch(err => {
+          console.log(err)
+          LNbits.utils.notifyApiError(err)
         })
     },
     showWebhookResponseDialog(webhookResponse) {
