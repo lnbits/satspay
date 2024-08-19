@@ -17,9 +17,10 @@ from .crud import (
     get_charge,
     get_charges,
     get_or_create_satspay_settings,
+    update_charge,
     update_satspay_settings,
 )
-from .helpers import fetch_onchain_config
+from .helpers import check_charge_balance, fetch_onchain_config
 from .models import Charge, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
 
@@ -30,33 +31,29 @@ satspay_api_router = APIRouter()
 async def api_charge_create(
     data: CreateCharge, wallet: WalletTypeInfo = Depends(require_invoice_key)
 ) -> Charge:
-    config = None
-    new_address = None
+    if not data.amount and not data.currency_amount:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="either amount or currency_amount are required.",
+        )
+    if data.currency and data.currency_amount:
+        rate = await get_fiat_rate_satoshis(data.currency)
+        data.amount = round(rate * data.currency_amount)
     if data.onchainwallet:
         try:
             config, new_address = await fetch_onchain_config(
                 data.onchainwallet, wallet.wallet.inkey
             )
             start_onchain_listener(new_address)
+            return await create_charge(
+                user=wallet.wallet.user,
+                onchainaddress=new_address,
+                data=data,
+                config=config,
+            )
         except Exception as exc:
             logger.error(f"Error fetching onchain config: {exc}")
-
-    if not data.amount and not data.currency_amount:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="either amount or currency_amount are required.",
-        )
-
-    if data.currency and data.currency_amount:
-        rate = await get_fiat_rate_satoshis(data.currency)
-        data.amount = round(rate * data.currency_amount)
-
-    return await create_charge(
-        user=wallet.wallet.user,
-        data=data,
-        config=config,
-        onchainaddress=new_address,
-    )
+    return await create_charge(user=wallet.wallet.user, data=data)
 
 
 @satspay_api_router.get("/api/v1/charges")
@@ -75,6 +72,27 @@ async def api_charge_retrieve(charge_id: str) -> Charge:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
         )
+    return charge
+
+
+@satspay_api_router.get(
+    "/api/v1/charge/balance/{charge_id}", dependencies=[Depends(require_admin_key)]
+)
+async def api_charge_check_balance(charge_id: str) -> Charge:
+    charge = await get_charge(charge_id)
+    if not charge:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
+        )
+    if charge.paid:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="Charge is already paid."
+        )
+    balance_before = charge.balance
+    pending_before = charge.pending
+    charge = await check_charge_balance(charge)
+    if charge.balance != balance_before or charge.pending != pending_before:
+        charge = await update_charge(charge)
     return charge
 
 
