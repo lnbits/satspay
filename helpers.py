@@ -1,4 +1,5 @@
 import httpx
+import json
 from lnbits.core.crud import get_standalone_payment
 from lnbits.settings import settings
 from loguru import logger
@@ -82,7 +83,6 @@ async def check_charge_balance(charge: Charge) -> Charge:
         status = await payment.check_status()
         if status.success:
             charge.balance = charge.amount
-            return charge
 
     if charge.onchainaddress:
         try:
@@ -101,5 +101,9 @@ async def check_charge_balance(charge: Charge) -> Charge:
                 charge.pending = balance.unconfirmed
         except Exception as exc:
             logger.warning(f"Charge check onchain address failed with: {exc!s}")
+
+    if charge.paid and charge.webhook:
+        resp = await call_webhook(charge)
+        charge.extra = json.dumps({**charge.config.dict(), **resp})
 
     return charge
