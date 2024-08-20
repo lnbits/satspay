@@ -62,7 +62,7 @@ class Charge(BaseModel):
     balance: int
     pending: Optional[int] = 0
     timestamp: datetime
-    last_accessed_at: datetime  # unused, TODO: remove
+    last_accessed_at: Optional[datetime] = None  # unused, TODO: remove
     currency: Optional[str] = None
     currency_amount: Optional[float] = None
     paid: bool = False

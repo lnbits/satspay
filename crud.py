@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 from typing import Optional
 
 from lnbits.core.services import create_invoice
@@ -101,7 +100,13 @@ async def update_charge(charge: Charge) -> Charge:
         UPDATE satspay.charges
         SET extra = ?, balance = ?, pending = ?, paid = ? WHERE id = ?
         """,
-        (charge.extra, charge.balance, charge.pending, charge.paid, charge.id,),
+        (
+            charge.extra,
+            charge.balance,
+            charge.pending,
+            charge.paid,
+            charge.id,
+        ),
     )
     return charge
 
