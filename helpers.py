@@ -9,23 +9,31 @@ from .models import Charge, OnchainBalance, WalletAccountConfig
 
 
 async def call_webhook(charge: Charge):
-    async with httpx.AsyncClient() as client:
-        try:
-            assert charge.webhook
-            r = await client.post(
-                charge.webhook,
-                json=charge.public,
-                timeout=40,
+    try:
+        assert charge.webhook
+        async with httpx.AsyncClient() as client:
+            # wordpress expect a GET request with json_encoded binary content
+            r = await client.request(
+                method="GET",
+                url=charge.webhook,
+                content=charge.json(),
+                timeout=10,
             )
+            if r.is_success:
+                logger.success(f"Webhook sent for charge {charge.id}")
+            else:
+                logger.warning(f"Failed to call webhook for charge {charge.id}")
+                logger.warning(charge.webhook)
+                logger.warning(r.text)
             return {
                 "webhook_success": r.is_success,
                 "webhook_message": r.reason_phrase,
                 "webhook_response": r.text,
             }
-        except Exception as e:
-            logger.warning(f"Failed to call webhook for charge {charge.id}")
-            logger.warning(e)
-            return {"webhook_success": False, "webhook_message": str(e)}
+    except Exception as e:
+        logger.warning(f"Failed to call webhook for charge {charge.id}")
+        logger.warning(e)
+        return {"webhook_success": False, "webhook_message": str(e)}
 
 
 def get_endpoint(charge: Charge) -> str:
