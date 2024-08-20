@@ -156,3 +156,22 @@ async def m010_add_fiat(db):
         await db.execute("ALTER TABLE satspay.charges ADD COLUMN currency_amount FLOAT")
     except OperationalError:
         pass
+
+
+async def m011_persist_paid(db):
+    """
+    Add 'paid' column for storing the charge status
+    """
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN paid BOOLEAN DEFAULT FALSE"
+        )
+        await db.execute(
+            """
+            UPDATE satspay.charges
+            SET paid = TRUE
+            WHERE balance >= amount
+            """
+        )
+    except OperationalError:
+        pass

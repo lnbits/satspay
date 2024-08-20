@@ -48,9 +48,16 @@ new Vue({
         const res = JSON.parse(data.toString())
         this.charge.balance = res.balance
         this.charge.pending = res.pending
-        if (res.paid) {
+        this.charge.paid = res.paid
+        this.charge.completelink = res.completelink
+        if (this.charge.paid) {
           this.charge.progress = 1
           this.charge.paid = true
+          if (this.charge.completelink) {
+            setTimeout(() => {
+              window.location.href = this.charge.completelink
+            }, 5000)
+          }
           this.$q.notify({
             type: 'positive',
             message: 'Payment received',

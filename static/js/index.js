@@ -376,7 +376,7 @@ new Vue({
           const charge = _.findWhere(this.chargeLinks, {id: chargeId})
           charge.balance = response.data.balance
           charge.pending = response.data.pending
-          charge.paid = charge.balance >= charge.amount
+          charge.paid = response.data.paid
           const index = this.chargeLinks.findIndex(c => c.id === chargeId)
           this.chargeLinks[index] = mapCharge(charge, this.chargeLinks[index])
           if (charge.paid) {

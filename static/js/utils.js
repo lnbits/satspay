@@ -15,7 +15,6 @@ const retryWithDelay = async function (fn, retryCount = 0) {
 
 const mapCharge = (obj, oldObj = {}) => {
   let charge = {...oldObj, ...obj}
-  charge.paid = charge.balance >= charge.amount
   charge.displayUrl = ['/satspay/', obj.id].join('')
   charge.expanded = oldObj.expanded || false
   charge.pending = oldObj.pending || 0
