@@ -69,6 +69,8 @@ is paid. you can refresh the success page of the webshop to trigger this endpoin
 useful if the webhook is not working or fails for some reason.
 https://github.com/lnbits/woocommerce-payment-gateway/blob/main/lnbits.php#L312
 """
+
+
 @satspay_api_router.get(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
 )
