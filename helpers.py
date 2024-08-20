@@ -16,8 +16,7 @@ async def call_webhook(charge: Charge):
             r = await client.request(
                 method="GET",
                 url=charge.webhook,
-                content=json.dumps(charge).encode(),
-                headers={"Content-Type": "application/json"},
+                content=charge.json(),
                 timeout=10,
             )
             if r.is_success:
