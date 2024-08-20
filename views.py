@@ -43,7 +43,6 @@ async def display_charge(request: Request, charge_id: str):
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Charge link does not exist."
         )
-
     return satspay_renderer().TemplateResponse(
         "satspay/display.html",
         {

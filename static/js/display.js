@@ -35,7 +35,8 @@ new Vue({
     hasEnded() {
       const chargeTimeSeconds = this.charge.time * 60
       const now = new Date().getTime() / 1000
-      const timeSecondsLeft = chargeTimeSeconds - now + this.charge.timestamp
+      const then = new Date(this.charge.timestamp).getTime() / 1000
+      const timeSecondsLeft = chargeTimeSeconds - now + then
       return timeSecondsLeft <= 0 || this.charge.paid
     }
   },
