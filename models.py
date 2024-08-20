@@ -93,7 +93,6 @@ class Charge(BaseModel):
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["timestamp"] = self.timestamp.isoformat()
-        print(c["timestamp"])
         if self.paid:
             c["completelink"] = self.completelink
         return c
