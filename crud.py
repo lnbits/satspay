@@ -95,10 +95,18 @@ async def create_charge(
 
 
 async def update_charge(charge: Charge) -> Charge:
-    q = ", ".join([f"{field[0]} = ?" for field in charge.dict().items()])
     await db.execute(
-        f"UPDATE satspay.charges SET {q} WHERE id = ?",
-        (*charge.dict().values(), charge.id),
+        """
+        UPDATE satspay.charges
+        SET extra = ?, balance = ?, pending = ?, paid = ? WHERE id = ?
+        """,
+        (
+            charge.extra,
+            charge.balance,
+            charge.pending,
+            charge.paid,
+            charge.id,
+        ),
     )
     return charge
 
@@ -116,12 +124,6 @@ async def get_charge_by_onchain_address(onchain_address: str) -> Optional[Charge
 
 
 async def get_charges(user: str) -> list[Charge]:
-    await db.execute(
-        f"""
-    UPDATE satspay.charges SET last_accessed_at = {db.timestamp_now} WHERE "user"  = ?
-    """,
-        (user,),
-    )
     rows = await db.fetchall(
         """SELECT * FROM satspay.charges WHERE "user" = ? ORDER BY "timestamp" DESC """,
         (user,),

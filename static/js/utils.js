@@ -22,9 +22,10 @@ const mapCharge = (obj, oldObj = {}) => {
       ? JSON.parse(charge.extra)
       : charge.extra
   const now = new Date().getTime() / 1000
+  const then = new Date(charge.timestamp).getTime() / 1000
   const chargeTimeSeconds = charge.time * 60
-  const secondsSinceCreated = chargeTimeSeconds - now + charge.timestamp
-  charge.timeSecondsLeft = chargeTimeSeconds - now + charge.timestamp
+  const secondsSinceCreated = chargeTimeSeconds - now + then
+  charge.timeSecondsLeft = chargeTimeSeconds - now + then
   charge.timeLeft =
     charge.timeSecondsLeft <= 0
       ? '00:00:00'

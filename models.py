@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Optional
 
 from fastapi.param_functions import Query
@@ -60,8 +61,8 @@ class Charge(BaseModel):
     zeroconf: bool
     balance: int
     pending: Optional[int] = 0
-    timestamp: int
-    last_accessed_at: Optional[int] = 0
+    timestamp: datetime
+    last_accessed_at: Optional[datetime] = None  # unused, TODO: remove
     currency: Optional[str] = None
     currency_amount: Optional[float] = None
     paid: bool = False
@@ -91,6 +92,7 @@ class Charge(BaseModel):
             "completelinktext",
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
+        c["timestamp"] = self.timestamp.isoformat()
         if self.paid:
             c["completelink"] = self.completelink
         return c
