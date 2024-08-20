@@ -17,6 +17,11 @@ async def call_webhook(charge: Charge):
                 json=charge.public,
                 timeout=40,
             )
+            if r.is_success:
+                logger.success(f"Webhook sent for charge {charge.id}")
+            else:
+                logger.warning(f"Failed to call webhook for charge {charge.id}")
+                logger.warning(r.text)
             return {
                 "webhook_success": r.is_success,
                 "webhook_message": r.reason_phrase,

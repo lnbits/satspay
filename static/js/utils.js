@@ -17,7 +17,6 @@ const mapCharge = (obj, oldObj = {}) => {
   let charge = {...oldObj, ...obj}
   charge.displayUrl = ['/satspay/', obj.id].join('')
   charge.expanded = oldObj.expanded || false
-  charge.pending = oldObj.pending || 0
   charge.extra =
     charge.extra && charge.extra instanceof String
       ? JSON.parse(charge.extra)
