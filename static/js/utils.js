@@ -18,7 +18,7 @@ const mapCharge = (obj, oldObj = {}) => {
   charge.displayUrl = ['/satspay/', obj.id].join('')
   charge.expanded = oldObj.expanded || false
   charge.extra =
-    charge.extra && charge.extra instanceof String
+    charge.extra && typeof charge.extra == 'string'
       ? JSON.parse(charge.extra)
       : charge.extra
   const now = new Date().getTime() / 1000
