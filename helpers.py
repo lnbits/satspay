@@ -113,7 +113,7 @@ async def check_charge_balance(charge: Charge) -> Charge:
 
     charge.paid = charge.balance >= charge.amount
 
-    if charge.paid and charge.webhook:
+    if charge.webhook:
         resp = await call_webhook(charge)
         charge.extra = json.dumps({**charge.config.dict(), **resp})
 

@@ -109,7 +109,7 @@ async def _handle_ws_message(address: str, data: dict):
     if charge.paid:
         logger.success(f"Charge {charge.id} onchain paid.")
         stop_onchain_listener(address)
-        if charge.webhook:
-            resp = await call_webhook(charge)
-            charge.extra = json.dumps({**charge.config.dict(), **resp})
+    if charge.webhook:
+        resp = await call_webhook(charge)
+        charge.extra = json.dumps({**charge.config.dict(), **resp})
     await update_charge(charge)
