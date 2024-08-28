@@ -22,6 +22,7 @@ from .crud import (
     update_satspay_settings,
 )
 from .helpers import (
+    call_webhook,
     check_charge_balance,
     fetch_onchain_address,
     fetch_onchain_config_network,
@@ -144,6 +145,25 @@ async def api_charge_check_balance(charge_id: str) -> Charge:
     charge = await check_charge_balance(charge)
     if charge.balance != balance_before or charge.pending != pending_before:
         charge = await update_charge(charge)
+    return charge
+
+
+@satspay_api_router.get(
+    "/api/v1/charge/webhook/{charge_id}", dependencies=[Depends(require_admin_key)]
+)
+async def api_charge_webhook(charge_id: str) -> Charge:
+    charge = await get_charge(charge_id)
+    if not charge:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
+        )
+    if not charge.webhook:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="No webhook set."
+        )
+    resp = await call_webhook(charge)
+    charge.add_extra(resp)
+    charge = await update_charge(charge)
     return charge
 
 

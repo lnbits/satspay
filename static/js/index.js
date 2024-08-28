@@ -44,10 +44,10 @@ new Vue({
             field: 'id'
           },
           {
-            name: 'description',
+            name: 'name',
             align: 'left',
-            label: 'Title',
-            field: 'description'
+            label: 'Name',
+            field: 'name'
           },
           {
             name: 'timeLeft',
@@ -351,6 +351,24 @@ new Vue({
           }
         })
     },
+    sendWebhook: function (chargeId) {
+      LNbits.api
+        .request(
+          'GET',
+          `/satspay/api/v1/charge/webhook/${chargeId}`,
+          this.g.user.wallets[0].adminkey
+        )
+        .then(response => {
+          console.log(response)
+          this.$q.notify({
+            message: 'Webhook sent',
+            color: 'positive'
+          })
+        })
+        .catch(err => {
+          LNbits.utils.notifyApiError(err)
+        })
+    },
     checkChargeBalance: function (chargeId) {
       LNbits.api
         .request(
@@ -366,7 +384,6 @@ new Vue({
           const index = this.chargeLinks.findIndex(c => c.id === chargeId)
           this.chargeLinks[index] = mapCharge(charge, this.chargeLinks[index])
           if (charge.paid) {
-            LNbits.utils.notify('Charge paid')
             this.$q.notify({
               message: 'Charge paid',
               color: 'positive'

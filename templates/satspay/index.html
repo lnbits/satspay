@@ -83,7 +83,7 @@
           <template v-slot:header="props">
             <q-tr :props="props">
               <q-th auto-width></q-th>
-              <q-th auto-width>Status </q-th>
+              <q-th auto-width>Status</q-th>
               <q-th auto-width>Title</q-th>
               <q-th auto-width>Time Left (hh:mm)</q-th>
               <q-th auto-width>Time To Pay (hh:mm)</q-th>
@@ -155,12 +155,12 @@
                   >
                 </q-badge>
               </q-td>
-              <q-td key="description" :props="props" :class="">
+              <q-td key="name" :props="props">
                 <a
                   :href="props.row.displayUrl"
                   target="_blank"
                   style="color: unset; text-decoration: none"
-                  >{{props.row.description}}</a
+                  >{{props.row.name}}</a
                 >
               </q-td>
               <q-td key="timeLeft" :props="props" :class="">
@@ -200,31 +200,22 @@
             </q-tr>
             <q-tr v-show="props.row.expanded" :props="props">
               <q-td colspan="100%">
-                <div
-                  v-if="props.row.onchainwallet"
-                  class="row items-center q-mt-md q-mb-lg"
-                >
-                  <div class="col-2 q-pr-lg">Onchain Wallet:</div>
-                  <div class="col-4 q-pr-lg">
+                <div style="padding: 12px">
+                  <div>ID: {{props.row.id}}</div>
+                  <div>Description: {{props.row.description}}</div>
+                  <div v-if="props.row.onchainwallet">
+                    Onchain Wallet:
                     {{getOnchainWalletName(props.row.onchainwallet)}}
                   </div>
-                </div>
-                <div
-                  v-if="props.row.lnbitswallet"
-                  class="row items-center q-mt-md q-mb-lg"
-                >
-                  <div class="col-2 q-pr-lg">LNbits Wallet:</div>
-                  <div class="col-4 q-pr-lg">
+                  <div v-if="props.row.lnbitswallet">
+                    LNbits Wallet:
                     {{getLNbitsWalletName(props.row.lnbitswallet)}}
                   </div>
-                </div>
 
-                <div
-                  v-if="props.row.completelink || props.row.completelinktext"
-                  class="row items-center q-mt-md q-mb-lg"
-                >
-                  <div class="col-2 q-pr-lg">Completed Link:</div>
-                  <div class="col-4 q-pr-lg">
+                  <div
+                    v-if="props.row.completelink || props.row.completelinktext"
+                  >
+                    Completed Link:
                     <a
                       class="text-secondary"
                       :href="props.row.completelink"
@@ -234,13 +225,8 @@
                       props.row.completelink}}</a
                     >
                   </div>
-                </div>
-                <div
-                  v-if="props.row.webhook"
-                  class="row items-center q-mt-md q-mb-lg"
-                >
-                  <div class="col-2 q-pr-lg">Webhook:</div>
-                  <div class="col-4 q-pr-lg">
+                  <div v-if="props.row.webhook">
+                    Webhook:
                     <a
                       class="text-secondary"
                       :href="props.row.webhook"
@@ -249,31 +235,26 @@
                       >{{props.row.webhook}}</a
                     >
                   </div>
-                  <div class="col-4 q-pr-lg">
+                  <div v-if="props.row.webhook">
+                    Webhook Response:
                     <q-badge
-                      v-if="props.row.webhook_message"
+                      v-if="props.row.extra.webhook_message"
                       @click="showWebhookResponseDialog(props.row.extra.webhook_response)"
                       color="blue"
                       class="cursor-pointer"
                     >
-                      {{props.row.webhook_message }}
+                      {{props.row.extra.webhook_message }}
                     </q-badge>
+                    <span v-else>no response yet</span>
                   </div>
-                </div>
-                <div class="row items-center q-mt-md q-mb-lg">
-                  <div class="col-2 q-pr-lg">ID:</div>
-                  <div class="col-4 q-pr-lg">{{props.row.id}}</div>
-                </div>
-                <div class="row items-center q-mt-md q-mb-lg">
-                  <div class="col-2 q-pr-lg"></div>
-                  <div class="col-6 q-pr-lg">
+                  <div class="row">
                     <q-btn
                       unelevated
                       outline
                       type="a"
                       :href="props.row.displayUrl"
                       target="_blank"
-                      class="float-left q-mr-lg"
+                      class="float-left q-mr-md q-mt-md"
                       >Details</q-btn
                     >
                     <q-btn
@@ -281,20 +262,28 @@
                       outline
                       icon="refresh"
                       @click="checkChargeBalance(props.row.id)"
-                      class="float-left q-mr-lg"
+                      class="float-left q-mr-md q-mt-md"
                       v-if="!props.row.paid"
                       >Check charge balance</q-btn
+                    >
+                    <q-btn
+                      unelevated
+                      outline
+                      icon="refresh"
+                      @click="sendWebhook(props.row.id)"
+                      class="float-left q-mr-md q-mt-md"
+                      v-if="props.row.paid"
+                      >Resend Webhook</q-btn
                     >
                     <q-btn
                       unelevated
                       color="pink"
                       icon="cancel"
                       @click="deleteChargeLink(props.row.id)"
+                      class="float-left q-mr-md q-mt-md"
                       >Delete</q-btn
                     >
                   </div>
-                  <div class="col-4"></div>
-                  <div class="col-2 q-pr-lg"></div>
                 </div>
               </q-td>
             </q-tr>
@@ -375,6 +364,7 @@
       </q-card-section>
     </q-card>
   </div>
+
   <q-dialog v-model="formDialogCharge.show" position="top">
     <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
       <q-form @submit="sendFormDataCharge" class="q-gutter-md">
