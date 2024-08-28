@@ -618,6 +618,7 @@
 {% endblock %} {% block scripts %} {{ window_vars(user) }}
 <script>
   const admin = '{{ admin }}'
+  const network = '{{ network }}'
 </script>
 <script src="{{ static_url_for('satspay/static', path='js/utils.js') }}"></script>
 <script src="{{ static_url_for('satspay/static', path='js/index.js') }}"></script>

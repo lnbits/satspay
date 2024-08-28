@@ -5,7 +5,7 @@ new Vue({
   data() {
     return {
       charge: mapCharge(charge_data),
-      network: network,
+      mempool_url: mempool_url,
       ws: null,
       wallet: {
         inkey: ''
@@ -15,12 +15,9 @@ new Vue({
   },
   computed: {
     mempoolLink() {
-      const onchainaddress = this.charge.onchainaddress
-      if (this.network === 'Testnet') {
-        return `https://mempool.space/testnet/address/${onchainaddress}`
-      } else {
-        return `https://mempool.space/address/${onchainaddress}`
-      }
+      // remove trailing slash
+      const url = this.mempool_url.replace(/\/$/, '')
+      return `${url}/address/${this.charge.onchainaddress}`
     },
     unifiedQR() {
       const bitcoin = (this.charge.onchainaddress || '').toUpperCase()

@@ -1,7 +1,8 @@
 from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException
-from lnbits.core.models import WalletTypeInfo
+from lnbits.core.crud import get_wallet
+from lnbits.core.models import Wallet, WalletTypeInfo
 from lnbits.decorators import (
     check_admin,
     require_admin_key,
@@ -20,16 +21,32 @@ from .crud import (
     update_charge,
     update_satspay_settings,
 )
-from .helpers import check_charge_balance, fetch_onchain_config
+from .helpers import (
+    check_charge_balance,
+    fetch_onchain_address,
+    fetch_onchain_config_network,
+)
 from .models import Charge, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
 
 satspay_api_router = APIRouter()
 
 
+async def _get_wallet_network(wallet: Wallet) -> str:
+    try:
+        network = await fetch_onchain_config_network(wallet.inkey)
+    except Exception as exc:
+        logger.error(f"Error fetching onchain config: {exc!s}")
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="Error fetching onchain config.",
+        ) from exc
+    return network
+
+
 @satspay_api_router.post("/api/v1/charge")
 async def api_charge_create(
-    data: CreateCharge, wallet: WalletTypeInfo = Depends(require_invoice_key)
+    data: CreateCharge, key_type: WalletTypeInfo = Depends(require_invoice_key)
 ) -> Charge:
     if not data.amount and not data.currency_amount:
         raise HTTPException(
@@ -39,21 +56,48 @@ async def api_charge_create(
     if data.currency and data.currency_amount:
         rate = await get_fiat_rate_satoshis(data.currency)
         data.amount = round(rate * data.currency_amount)
+    if not data.onchainwallet and not data.lnbitswallet:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="either onchainwallet or lnbitswallet are required.",
+        )
+    if data.lnbitswallet:
+        lnbitswallet = await get_wallet(data.lnbitswallet)
+        if not lnbitswallet:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="LNbits wallet does not exist.",
+            )
+        if lnbitswallet.user != key_type.wallet.user:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="LNbits wallet does not belong to you.",
+            )
     if data.onchainwallet:
+        settings = await get_or_create_satspay_settings()
+        network = await _get_wallet_network(key_type.wallet)
+        if network != settings.network:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Onchain network mismatch. {network} != {settings.network}",
+            )
         try:
-            config, new_address = await fetch_onchain_config(
-                data.onchainwallet, wallet.wallet.inkey
+            new_address = await fetch_onchain_address(
+                data.onchainwallet, key_type.wallet.inkey
             )
             start_onchain_listener(new_address)
             return await create_charge(
-                user=wallet.wallet.user,
+                user=key_type.wallet.user,
                 onchainaddress=new_address,
                 data=data,
-                config=config,
             )
         except Exception as exc:
             logger.error(f"Error fetching onchain config: {exc}")
-    return await create_charge(user=wallet.wallet.user, data=data)
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Error fetching onchain address.",
+            ) from exc
+    return await create_charge(user=key_type.wallet.user, data=data)
 
 
 @satspay_api_router.get("/api/v1/charges")
@@ -63,18 +107,16 @@ async def api_charges_retrieve(
     return await get_charges(wallet.wallet.user)
 
 
-"""
-This endpoint is used by the woocommerce plugin to check if the status of a charge
-is paid. you can refresh the success page of the webshop to trigger this endpoint.
-useful if the webhook is not working or fails for some reason.
-https://github.com/lnbits/woocommerce-payment-gateway/blob/main/lnbits.php#L312
-"""
-
-
 @satspay_api_router.get(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
 )
 async def api_charge_retrieve(charge_id: str) -> dict:
+    """
+    This endpoint is used by the woocommerce plugin to check if the status of a charge
+    is paid. you can refresh the success page of the webshop to trigger this endpoint.
+    useful if the webhook is not working or fails for some reason.
+    https://github.com/lnbits/woocommerce-payment-gateway/blob/main/lnbits.php#L312
+    """
     charge = await get_charge(charge_id)
     if not charge:
         raise HTTPException(

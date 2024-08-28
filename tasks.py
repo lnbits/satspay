@@ -1,5 +1,4 @@
 import asyncio
-import json
 
 from fastapi import WebSocket
 from lnbits.core.models import Payment
@@ -56,7 +55,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         await send_success_websocket(charge)
         if charge.webhook:
             resp = await call_webhook(charge)
-            charge.extra = json.dumps({**charge.config.dict(), **resp})
+            charge.add_extra(resp)
         await update_charge(charge)
 
 
@@ -111,5 +110,5 @@ async def _handle_ws_message(address: str, data: dict):
         stop_onchain_listener(address)
     if charge.webhook:
         resp = await call_webhook(charge)
-        charge.extra = json.dumps({**charge.config.dict(), **resp})
+        charge.add_extra(resp)
     await update_charge(charge)

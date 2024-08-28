@@ -10,8 +10,13 @@ new Vue({
     return {
       currencies: [],
       fiatRates: {},
-      settings: {},
       settings: [
+        {
+          type: 'str',
+          description:
+            'Network used by OnchainWallet extension Wallet. default: `Mainnet`, or `Testnet` for testnet',
+          name: 'network'
+        },
         {
           type: 'str',
           description:
@@ -21,6 +26,7 @@ new Vue({
       ],
       filter: '',
       admin: admin,
+      network: network,
       balance: null,
       walletLinks: [],
       chargeLinks: [],
@@ -28,12 +34,7 @@ new Vue({
       themeOptions: [],
       onchainwallet: '',
       rescanning: false,
-      mempool: {
-        endpoint: '',
-        network: 'Mainnet'
-      },
       showAdvanced: false,
-
       chargesTable: {
         columns: [
           {
@@ -171,31 +172,16 @@ new Vue({
 
     getWalletLinks: async function () {
       try {
-        const {data} = await LNbits.api.request(
+        let {data} = await LNbits.api.request(
           'GET',
-          `/watchonly/api/v1/wallet?network=${this.mempool.network}`,
+          `/watchonly/api/v1/wallet?network=${this.network}`,
           this.g.user.wallets[0].adminkey
         )
+        data = data.filter(w => w.network === this.network)
         this.walletLinks = data.map(w => ({
           id: w.id,
           label: w.title + ' - ' + w.id
         }))
-      } catch (error) {
-        LNbits.utils.notifyApiError(error)
-      }
-    },
-
-    getWalletConfig: async function () {
-      try {
-        const {data} = await LNbits.api.request(
-          'GET',
-          '/watchonly/api/v1/config',
-          this.g.user.wallets[0].inkey
-        )
-        this.mempool.endpoint = data.mempool_endpoint
-        this.mempool.network = data.network || 'Mainnet'
-        const url = new URL(this.mempool.endpoint)
-        this.mempool.hostname = url.hostname
       } catch (error) {
         LNbits.utils.notifyApiError(error)
       }
@@ -426,7 +412,6 @@ new Vue({
       await this.getThemes()
     }
     await this.getCharges()
-    await this.getWalletConfig()
     await this.getWalletLinks()
     LNbits.api
       .request('GET', '/api/v1/currencies')
