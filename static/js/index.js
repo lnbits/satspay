@@ -22,6 +22,12 @@ new Vue({
           description:
             'Mempool API URL. default: `https://mempool.space`, use `https://mempool.space/testnet` for testnet',
           name: 'mempool_url'
+        },
+        {
+          type: 'str',
+          description:
+            'Webhook Method with which the webhook is sent (GET is required for Woocommerce plugin). default: `GET`, or `POST`',
+          name: 'webhook_method'
         }
       ],
       filter: '',

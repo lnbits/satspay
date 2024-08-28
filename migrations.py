@@ -186,3 +186,14 @@ async def m012_add_setting_network(db):
         await db.execute("UPDATE satspay.settings SET network = 'Mainnet'")
     except OperationalError:
         pass
+
+
+async def m013_add_setting_webhook(db):
+    """
+    Add 'webhook_method' column for storing the webhook method
+    """
+    try:
+        await db.execute("ALTER TABLE satspay.settings ADD COLUMN webhook_method TEXT")
+        await db.execute("UPDATE satspay.settings SET webhook_method = 'GET'")
+    except OperationalError:
+        pass

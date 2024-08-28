@@ -10,14 +10,22 @@ from .models import Charge, OnchainBalance
 async def call_webhook(charge: Charge):
     try:
         assert charge.webhook
+        settings = await get_or_create_satspay_settings()
         async with httpx.AsyncClient() as client:
             # wordpress expect a GET request with json_encoded binary content
-            r = await client.request(
-                method="GET",
-                url=charge.webhook,
-                content=charge.json(),
-                timeout=10,
-            )
+            if settings.webhook_method == "GET":
+                r = await client.request(
+                    method="GET",
+                    url=charge.webhook,
+                    content=charge.json(),
+                    timeout=10,
+                )
+            else:
+                r = await client.post(
+                    url=charge.webhook,
+                    json=charge.json(),
+                    timeout=10,
+                )
             if r.is_success:
                 logger.success(f"Webhook sent for charge {charge.id}")
             else:

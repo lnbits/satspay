@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 
 class SatspaySettings(BaseModel):
+    webhook_method: str = "GET"
     mempool_url: str = "https://mempool.space"
     network: str = "Mainnet"
 
