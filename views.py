@@ -30,9 +30,15 @@ def satspay_renderer():
 
 @satspay_generic_router.get("/", response_class=HTMLResponse)
 async def index(request: Request, user: User = Depends(check_user_exists)):
+    settings = await get_or_create_satspay_settings()
     return satspay_renderer().TemplateResponse(
         "satspay/index.html",
-        {"request": request, "user": user.dict(), "admin": user.admin},
+        {
+            "request": request,
+            "user": user.dict(),
+            "admin": user.admin,
+            "network": settings.network,
+        },
     )
 
 
