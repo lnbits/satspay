@@ -48,10 +48,9 @@ async def fetch_onchain_balance(onchain_address: str) -> OnchainBalance:
 
 async def fetch_onchain_config_network(api_key: str) -> str:
     async with httpx.AsyncClient() as client:
-        headers = {"X-API-KEY": api_key}
         r = await client.get(
             url=f"http://{settings.host}:{settings.port}/watchonly/api/v1/config",
-            headers=headers,
+            headers={"X-API-KEY": api_key},
         )
         r.raise_for_status()
         config = r.json()
@@ -60,10 +59,9 @@ async def fetch_onchain_config_network(api_key: str) -> str:
 
 async def fetch_onchain_address(wallet_id: str, api_key: str) -> str:
     async with httpx.AsyncClient() as client:
-        headers = {"X-API-KEY": api_key}
         r = await client.get(
             url=f"http://{settings.host}:{settings.port}/watchonly/api/v1/address/{wallet_id}",
-            headers=headers,
+            headers={"X-API-KEY": api_key},
         )
         r.raise_for_status()
         address_data = r.json()
