@@ -10,7 +10,6 @@ new Vue({
     return {
       currencies: [],
       fiatRates: {},
-      settings: {},
       settings: [
         {
           type: 'str',
