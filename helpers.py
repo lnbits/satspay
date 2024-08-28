@@ -105,7 +105,6 @@ async def check_charge_balance(charge: Charge) -> Charge:
 
     if charge.webhook:
         resp = await call_webhook(charge)
-        extra = json.loads(charge.extra) if charge.extra else {}
-        charge.extra = json.dumps({**extra, **resp})
+        charge.add_extra(resp)
 
     return charge
