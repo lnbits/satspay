@@ -196,7 +196,7 @@
 {% endblock %} {% block scripts %}
 <script>
   const charge_data = JSON.parse({{ charge_data|tojson }});
-  const network = "{{ network }}";
+  const mempool_url = "{{ mempool_url }}";
 </script>
 <script src="{{ static_url_for('satspay/static', path='js/utils.js') }}"></script>
 <script src="{{ static_url_for('satspay/static', path='js/components.js') }}"></script>

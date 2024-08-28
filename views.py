@@ -17,7 +17,7 @@ from lnbits.helpers import template_renderer
 from lnbits.settings import settings
 from starlette.responses import HTMLResponse
 
-from .crud import get_charge, get_theme
+from .crud import get_charge, get_or_create_satspay_settings, get_theme
 from .tasks import public_ws_listeners
 
 templates = Jinja2Templates(directory="templates")
@@ -43,14 +43,14 @@ async def display_charge(request: Request, charge_id: str):
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Charge link does not exist."
         )
+    settings = await get_or_create_satspay_settings()
     return satspay_renderer().TemplateResponse(
         "satspay/display.html",
         {
             "request": request,
             "charge_data": json.dumps(charge.public),
             "custom_css": charge.custom_css,
-            "mempool_endpoint": charge.config.mempool_endpoint,
-            "network": charge.config.network,
+            "mempool_url": settings.mempool_url,
         },
     )
 

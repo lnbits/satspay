@@ -20,7 +20,7 @@ from .crud import (
     update_charge,
     update_satspay_settings,
 )
-from .helpers import check_charge_balance, fetch_onchain_config
+from .helpers import check_charge_balance, fetch_onchain_address
 from .models import Charge, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
 
@@ -41,7 +41,7 @@ async def api_charge_create(
         data.amount = round(rate * data.currency_amount)
     if data.onchainwallet:
         try:
-            config, new_address = await fetch_onchain_config(
+            new_address = await fetch_onchain_address(
                 data.onchainwallet, wallet.wallet.inkey
             )
             start_onchain_listener(new_address)
@@ -49,7 +49,6 @@ async def api_charge_create(
                 user=wallet.wallet.user,
                 onchainaddress=new_address,
                 data=data,
-                config=config,
             )
         except Exception as exc:
             logger.error(f"Error fetching onchain config: {exc}")

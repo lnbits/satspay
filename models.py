@@ -28,18 +28,10 @@ class CreateCharge(BaseModel):
     time: int = Query(..., ge=1)
     amount: Optional[int] = Query(None, ge=1)
     zeroconf: bool = Query(False)
-    extra: str = DEFAULT_MEMPOOL_CONFIG
     custom_css: Optional[str] = Query(None)
     currency: str = Query(None)
     currency_amount: Optional[float] = Query(None)
-
-
-class ChargeConfig(BaseModel):
-    mempool_endpoint: str
-    network: Optional[str]
-    webhook_message: Optional[str]
-    webhook_success: bool = False
-    misc: dict = {}
+    extra: Optional[str] = Query(None)
 
 
 class Charge(BaseModel):
@@ -55,7 +47,6 @@ class Charge(BaseModel):
     completelink: Optional[str]
     completelinktext: Optional[str] = "Back to Merchant"
     custom_css: Optional[str]
-    extra: str = DEFAULT_MEMPOOL_CONFIG
     time: int
     amount: int
     zeroconf: bool
@@ -66,11 +57,11 @@ class Charge(BaseModel):
     currency: Optional[str] = None
     currency_amount: Optional[float] = None
     paid: bool = False
+    extra: Optional[str] = None
 
-    @property
-    def config(self) -> ChargeConfig:
-        charge_config = json.loads(self.extra)
-        return ChargeConfig(**charge_config)
+    def add_extra(self, extra: dict):
+        old_extra = json.loads(self.extra) if self.extra else {}
+        self.extra = json.dumps({**old_extra, **extra})
 
     @property
     def public(self):

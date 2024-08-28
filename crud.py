@@ -23,7 +23,6 @@ async def create_charge(
     config: Optional[WalletAccountConfig] = None,
     onchainaddress: Optional[str] = None,
 ) -> Charge:
-    data = CreateCharge(**data.dict())
     charge_id = urlsafe_short_hash()
     if data.onchainwallet:
         if not onchainaddress or not config:

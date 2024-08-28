@@ -5,6 +5,7 @@ from lnbits.core.crud import get_standalone_payment
 from lnbits.settings import settings
 from loguru import logger
 
+from .crud import get_or_create_satspay_settings
 from .models import Charge, OnchainBalance, WalletAccountConfig
 
 
@@ -36,20 +37,10 @@ async def call_webhook(charge: Charge):
         return {"webhook_success": False, "webhook_message": str(e)}
 
 
-def get_endpoint(charge: Charge) -> str:
-    assert charge.config.mempool_endpoint, "No mempool endpoint configured"
-    return (
-        f"{charge.config.mempool_endpoint}/testnet"
-        if charge.config.network == "Testnet"
-        else charge.config.mempool_endpoint or ""
-    )
-
-
-async def fetch_onchain_balance(
-    onchain_address: str, mempool_endpoint: str
-) -> OnchainBalance:
+async def fetch_onchain_balance(onchain_address: str) -> OnchainBalance:
+    settings = await get_or_create_satspay_settings()
     async with httpx.AsyncClient() as client:
-        res = await client.get(f"{mempool_endpoint}/api/address/{onchain_address}")
+        res = await client.get(f"{settings.mempool_url}/api/address/{onchain_address}")
         res.raise_for_status()
         data = res.json()
         confirmed = data["chain_stats"]["funded_txo_sum"]
@@ -57,9 +48,7 @@ async def fetch_onchain_balance(
         return OnchainBalance(confirmed=confirmed, unconfirmed=unconfirmed)
 
 
-async def fetch_onchain_config(
-    wallet_id: str, api_key: str
-) -> tuple[WalletAccountConfig, str]:
+async def fetch_onchain_config(api_key: str) -> WalletAccountConfig:
     async with httpx.AsyncClient() as client:
         headers = {"X-API-KEY": api_key}
         r = await client.get(
@@ -68,18 +57,21 @@ async def fetch_onchain_config(
         )
         r.raise_for_status()
         config = r.json()
+        return WalletAccountConfig.parse_obj(config)
 
+
+async def fetch_onchain_address(wallet_id: str, api_key: str) -> str:
+    async with httpx.AsyncClient() as client:
+        headers = {"X-API-KEY": api_key}
         r = await client.get(
             url=f"http://{settings.host}:{settings.port}/watchonly/api/v1/address/{wallet_id}",
             headers=headers,
         )
         r.raise_for_status()
         address_data = r.json()
-
-        if not address_data:
+        if not address_data and "address" not in address_data:
             raise ValueError("Cannot fetch new address!")
-
-        return WalletAccountConfig.parse_obj(config), address_data["address"]
+        return address_data["address"]
 
 
 async def check_charge_balance(charge: Charge) -> Charge:
@@ -95,9 +87,7 @@ async def check_charge_balance(charge: Charge) -> Charge:
 
     if charge.onchainaddress:
         try:
-            balance = await fetch_onchain_balance(
-                charge.onchainaddress, charge.config.mempool_endpoint
-            )
+            balance = await fetch_onchain_balance(charge.onchainaddress)
             if (
                 balance.confirmed != charge.balance
                 or balance.unconfirmed != charge.pending
@@ -115,6 +105,7 @@ async def check_charge_balance(charge: Charge) -> Charge:
 
     if charge.webhook:
         resp = await call_webhook(charge)
-        charge.extra = json.dumps({**charge.config.dict(), **resp})
+        extra = json.loads(charge.extra) if charge.extra else {}
+        charge.extra = json.dumps({**extra, **resp})
 
     return charge
