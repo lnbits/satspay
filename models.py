@@ -101,3 +101,4 @@ class SatsPayTheme(BaseModel):
 class OnchainBalance(BaseModel):
     confirmed: int
     unconfirmed: int
+    txids: list[str]

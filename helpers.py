@@ -49,9 +49,12 @@ async def fetch_onchain_balance(onchain_address: str) -> OnchainBalance:
         res = await client.get(f"{settings.mempool_url}/api/address/{onchain_address}")
         res.raise_for_status()
         data = res.json()
+        # TODO: add txids to OnchainBalance
+        print(data)
+        txids = []  # type: ignore
         confirmed = data["chain_stats"]["funded_txo_sum"]
         unconfirmed = data["mempool_stats"]["funded_txo_sum"]
-        return OnchainBalance(confirmed=confirmed, unconfirmed=unconfirmed)
+        return OnchainBalance(confirmed=confirmed, unconfirmed=unconfirmed, txids=txids)
 
 
 async def fetch_onchain_config_network(api_key: str) -> str:
