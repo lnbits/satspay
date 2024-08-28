@@ -56,25 +56,30 @@ async def api_charge_create(
     if data.currency and data.currency_amount:
         rate = await get_fiat_rate_satoshis(data.currency)
         data.amount = round(rate * data.currency_amount)
-    lnbitswallet = await get_wallet(data.lnbitswallet)
-    if not lnbitswallet:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail="LNbits wallet does not exist."
-        )
-    if lnbitswallet.user != key_type.wallet.user:
+    if not data.onchainwallet and not data.lnbitswallet:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
-            detail="LNbits wallet does not belong to you.",
+            detail="either onchainwallet or lnbitswallet are required.",
         )
+    if data.lnbitswallet:
+        lnbitswallet = await get_wallet(data.lnbitswallet)
+        if not lnbitswallet:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="LNbits wallet does not exist.",
+            )
+        if lnbitswallet.user != key_type.wallet.user:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="LNbits wallet does not belong to you.",
+            )
     if data.onchainwallet:
-        network = await _get_wallet_network(lnbitswallet)
         settings = await get_or_create_satspay_settings()
+        network = await _get_wallet_network(key_type.wallet)
         if network != settings.network:
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"""
-                Onchain network mismatch. used: {network} != {settings.network}
-                """,
+                detail=f"Onchain network mismatch. {network} != {settings.network}",
             )
         try:
             new_address = await fetch_onchain_address(
