@@ -1,7 +1,9 @@
 import asyncio
 import json
+from typing import Optional
 
 from lnbits.settings import settings
+from lnbits.tasks import create_permanent_unique_task
 from loguru import logger
 from websockets.client import connect
 
@@ -9,6 +11,18 @@ from .crud import get_or_create_satspay_settings
 
 ws_receive_queue: asyncio.Queue[dict] = asyncio.Queue()
 ws_send_queue: asyncio.Queue[dict] = asyncio.Queue()
+
+websocket_task: Optional[asyncio.Task] = None
+
+
+def restart_websocket_task():
+    logger.info("Restarting websocket task...")
+    global websocket_task
+    if websocket_task:
+        websocket_task.cancel()
+    websocket_task = create_permanent_unique_task(
+        "ext_satspay_websocket", websocket_handler
+    )
 
 
 async def consumer_handler(websocket):

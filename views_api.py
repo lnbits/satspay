@@ -28,6 +28,7 @@ from .helpers import (
 )
 from .models import Charge, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
+from .websocket_handler import restart_websocket_task
 
 satspay_api_router = APIRouter()
 
@@ -168,9 +169,12 @@ async def api_get_or_create_settings() -> SatspaySettings:
 
 @satspay_api_router.put("/api/v1/settings", dependencies=[Depends(check_admin)])
 async def api_update_settings(data: SatspaySettings) -> SatspaySettings:
-    return await update_satspay_settings(data)
+    settings = await update_satspay_settings(data)
+    restart_websocket_task()
+    return settings
 
 
 @satspay_api_router.delete("/api/v1/settings", dependencies=[Depends(check_admin)])
 async def api_delete_settings() -> None:
     await delete_satspay_settings()
+    restart_websocket_task()

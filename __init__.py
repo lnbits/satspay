@@ -8,7 +8,7 @@ from .tasks import wait_for_onchain, wait_for_paid_invoices
 from .views import satspay_generic_router
 from .views_api import satspay_api_router
 from .views_api_themes import satspay_theme_router
-from .websocket_handler import websocket_handler
+from .websocket_handler import restart_websocket_task, websocket_task
 
 satspay_ext: APIRouter = APIRouter(prefix="/satspay", tags=["satspay"])
 satspay_ext.include_router(satspay_generic_router)
@@ -31,6 +31,8 @@ def satspay_stop():
             task.cancel()
         except Exception as ex:
             logger.warning(ex)
+    if websocket_task:
+        websocket_task.cancel()
 
 
 def satspay_start():
@@ -39,11 +41,9 @@ def satspay_start():
     paid_invoices_task = create_permanent_unique_task(
         "ext_satspay_paid_invoices", wait_for_paid_invoices
     )
-    websocket_task = create_permanent_unique_task(
-        "ext_satspay_websocket", websocket_handler
-    )
     onchain_task = create_permanent_unique_task("ext_satspay_onchain", wait_for_onchain)
-    scheduled_tasks.extend([paid_invoices_task, websocket_task, onchain_task])
+    scheduled_tasks.extend([paid_invoices_task, onchain_task])
+    restart_websocket_task()
 
 
 __all__ = ["db", "satspay_ext", "satspay_static_files", "satspay_start", "satspay_stop"]
