@@ -1,7 +1,8 @@
 from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException
-from lnbits.core.models import WalletTypeInfo
+from lnbits.core.crud import get_wallet
+from lnbits.core.models import Wallet, WalletTypeInfo
 from lnbits.decorators import (
     check_admin,
     require_admin_key,
@@ -20,16 +21,32 @@ from .crud import (
     update_charge,
     update_satspay_settings,
 )
-from .helpers import check_charge_balance, fetch_onchain_address
+from .helpers import (
+    check_charge_balance,
+    fetch_onchain_address,
+    fetch_onchain_config_network,
+)
 from .models import Charge, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
 
 satspay_api_router = APIRouter()
 
 
+async def _get_wallet_network(wallet: Wallet) -> str:
+    try:
+        network = await fetch_onchain_config_network(wallet.inkey)
+    except Exception as exc:
+        logger.error(f"Error fetching onchain config: {exc!s}")
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="Error fetching onchain config.",
+        ) from exc
+    return network
+
+
 @satspay_api_router.post("/api/v1/charge")
 async def api_charge_create(
-    data: CreateCharge, wallet: WalletTypeInfo = Depends(require_invoice_key)
+    data: CreateCharge, key_type: WalletTypeInfo = Depends(require_invoice_key)
 ) -> Charge:
     if not data.amount and not data.currency_amount:
         raise HTTPException(
@@ -39,20 +56,43 @@ async def api_charge_create(
     if data.currency and data.currency_amount:
         rate = await get_fiat_rate_satoshis(data.currency)
         data.amount = round(rate * data.currency_amount)
+    lnbitswallet = await get_wallet(data.lnbitswallet)
+    if not lnbitswallet:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="LNbits wallet does not exist."
+        )
+    if lnbitswallet.user != key_type.wallet.user:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="LNbits wallet does not belong to you.",
+        )
     if data.onchainwallet:
+        network = await _get_wallet_network(lnbitswallet)
+        settings = await get_or_create_satspay_settings()
+        if network != settings.network:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"""
+                Onchain network mismatch. used: {network} != {settings.network}
+                """,
+            )
         try:
             new_address = await fetch_onchain_address(
-                data.onchainwallet, wallet.wallet.inkey
+                data.onchainwallet, key_type.wallet.inkey
             )
             start_onchain_listener(new_address)
             return await create_charge(
-                user=wallet.wallet.user,
+                user=key_type.wallet.user,
                 onchainaddress=new_address,
                 data=data,
             )
         except Exception as exc:
             logger.error(f"Error fetching onchain config: {exc}")
-    return await create_charge(user=wallet.wallet.user, data=data)
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Error fetching onchain address.",
+            ) from exc
+    return await create_charge(user=key_type.wallet.user, data=data)
 
 
 @satspay_api_router.get("/api/v1/charges")
