@@ -62,18 +62,16 @@ async def api_charges_retrieve(
     return await get_charges(wallet.wallet.user)
 
 
-"""
-This endpoint is used by the woocommerce plugin to check if the status of a charge
-is paid. you can refresh the success page of the webshop to trigger this endpoint.
-useful if the webhook is not working or fails for some reason.
-https://github.com/lnbits/woocommerce-payment-gateway/blob/main/lnbits.php#L312
-"""
-
-
 @satspay_api_router.get(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
 )
 async def api_charge_retrieve(charge_id: str) -> dict:
+    """
+    This endpoint is used by the woocommerce plugin to check if the status of a charge
+    is paid. you can refresh the success page of the webshop to trigger this endpoint.
+    useful if the webhook is not working or fails for some reason.
+    https://github.com/lnbits/woocommerce-payment-gateway/blob/main/lnbits.php#L312
+    """
     charge = await get_charge(charge_id)
     if not charge:
         raise HTTPException(

@@ -1,12 +1,10 @@
-import json
-
 import httpx
 from lnbits.core.crud import get_standalone_payment
 from lnbits.settings import settings
 from loguru import logger
 
 from .crud import get_or_create_satspay_settings
-from .models import Charge, OnchainBalance, WalletAccountConfig
+from .models import Charge, OnchainBalance
 
 
 async def call_webhook(charge: Charge):
@@ -48,7 +46,7 @@ async def fetch_onchain_balance(onchain_address: str) -> OnchainBalance:
         return OnchainBalance(confirmed=confirmed, unconfirmed=unconfirmed)
 
 
-async def fetch_onchain_config(api_key: str) -> WalletAccountConfig:
+async def fetch_onchain_config_network(api_key: str) -> str:
     async with httpx.AsyncClient() as client:
         headers = {"X-API-KEY": api_key}
         r = await client.get(
@@ -57,7 +55,7 @@ async def fetch_onchain_config(api_key: str) -> WalletAccountConfig:
         )
         r.raise_for_status()
         config = r.json()
-        return WalletAccountConfig.parse_obj(config)
+        return config["network"]
 
 
 async def fetch_onchain_address(wallet_id: str, api_key: str) -> str:

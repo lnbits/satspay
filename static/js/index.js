@@ -15,6 +15,12 @@ new Vue({
         {
           type: 'str',
           description:
+            'Network used by OnchainWallet extension Wallet. default: `Mainnet`, or `Testnet` for testnet',
+          name: 'network'
+        },
+        {
+          type: 'str',
+          description:
             'Mempool API URL. default: `https://mempool.space`, use `https://mempool.space/testnet` for testnet',
           name: 'mempool_url'
         }

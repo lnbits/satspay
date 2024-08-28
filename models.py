@@ -7,14 +7,10 @@ from typing import Optional
 from fastapi.param_functions import Query
 from pydantic import BaseModel
 
-DEFAULT_MEMPOOL_ENDPOINT = "https://mempool.space"
-DEFAULT_MEMPOOL_CONFIG = (
-    '{"mempool_endpoint": "https://mempool.space", "network": "Mainnet"}'
-)
-
 
 class SatspaySettings(BaseModel):
-    mempool_url: str = DEFAULT_MEMPOOL_ENDPOINT
+    mempool_url: str = "https://mempool.space"
+    network: str = "Mainnet"
 
 
 class CreateCharge(BaseModel):
@@ -99,14 +95,6 @@ class SatsPayTheme(BaseModel):
     title: str
     custom_css: str
     user: str
-
-
-class WalletAccountConfig(BaseModel):
-    mempool_endpoint: str
-    receive_gap_limit: int
-    change_gap_limit: int
-    sats_denominated: bool
-    network: str
 
 
 class OnchainBalance(BaseModel):

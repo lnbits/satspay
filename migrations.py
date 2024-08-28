@@ -175,3 +175,14 @@ async def m011_persist_paid(db):
         )
     except OperationalError:
         pass
+
+
+async def m012_add_setting_network(db):
+    """
+    Add 'network' column for storing the network
+    """
+    try:
+        await db.execute("ALTER TABLE satspay.settings ADD COLUMN network TEXT")
+        await db.execute("UPDATE satspay.settings SET network = 'Mainnet'")
+    except OperationalError:
+        pass

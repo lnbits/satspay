@@ -1,4 +1,3 @@
-import json
 from typing import Optional
 
 from lnbits.core.services import create_invoice
@@ -11,7 +10,6 @@ from .models import (
     CreateSatsPayTheme,
     SatspaySettings,
     SatsPayTheme,
-    WalletAccountConfig,
 )
 
 db = Database("ext_satspay")
@@ -20,16 +18,12 @@ db = Database("ext_satspay")
 async def create_charge(
     user: str,
     data: CreateCharge,
-    config: Optional[WalletAccountConfig] = None,
     onchainaddress: Optional[str] = None,
 ) -> Charge:
     charge_id = urlsafe_short_hash()
     if data.onchainwallet:
-        if not onchainaddress or not config:
+        if not onchainaddress:
             raise Exception(f"Wallet '{data.onchainwallet}' can no longer be accessed.")
-        data.extra = json.dumps(
-            {"mempool_endpoint": config.mempool_endpoint, "network": config.network}
-        )
 
     assert data.amount, "Amount is required"
     if data.lnbitswallet:
