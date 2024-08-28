@@ -21,11 +21,6 @@ const mapCharge = (obj, oldObj = {}) => {
     charge.extra && typeof charge.extra == 'string'
       ? JSON.parse(charge.extra)
       : charge.extra
-  // charge.extra.webhook_response =
-  //   charge.extra.webhook_response &&
-  //   typeof charge.extra.webhook_response == 'string'
-  //     ? JSON.parse(charge.extra.webhook_response)
-  //     : charge.extra.webhook_response
   const now = new Date().getTime() / 1000
   const then = new Date(charge.timestamp).getTime() / 1000
   const chargeTimeSeconds = charge.time * 60
@@ -36,7 +31,6 @@ const mapCharge = (obj, oldObj = {}) => {
       ? '00:00:00'
       : secondsToTime(charge.timeSecondsLeft)
   charge.progress = progress(charge.time * 60, secondsSinceCreated)
-  console.log('charge', charge.extra && typeof charge.extra == 'string', charge)
   return charge
 }
 
