@@ -85,11 +85,10 @@
               <q-th auto-width></q-th>
               <q-th auto-width>Status</q-th>
               <q-th auto-width>Title</q-th>
-              <q-th auto-width>Time Left (hh:mm)</q-th>
-              <q-th auto-width>Time To Pay (hh:mm)</q-th>
-              <q-th auto-width>Amount To Pay</q-th>
+              <q-th auto-width>Time Left (hh:mm:ss)</q-th>
+              <q-th auto-width>Amount</q-th>
               <q-th auto-width>Balance</q-th>
-              <q-th auto-width>Pending Balance</q-th>
+              <q-th auto-width>Pending</q-th>
               <q-th auto-width>Onchain Address</q-th>
               <q-th auto-width></q-th>
             </q-tr>
@@ -175,9 +174,6 @@
                   >
                   </q-linear-progress>
                 </div>
-              </q-td>
-              <q-td key="time to pay" :props="props" :class="">
-                <div>{{props.row.time}}</div>
               </q-td>
               <q-td key="amount" :props="props" :class="">
                 <div>{{props.row.amount}}</div>
