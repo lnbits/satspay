@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 from lnbits.core.services import create_invoice
@@ -107,6 +108,11 @@ async def update_charge(charge: Charge) -> Charge:
 async def get_charge(charge_id: str) -> Optional[Charge]:
     row = await db.fetchone("SELECT * FROM satspay.charges WHERE id = ?", (charge_id,))
     return Charge(**row) if row else None
+
+
+async def get_pending_charges() -> list[Charge]:
+    rows = await db.fetchall("SELECT * FROM satspay.charges WHERE paid = false")
+    return [Charge(**row) for row in rows]
 
 
 async def get_charge_by_onchain_address(onchain_address: str) -> Optional[Charge]:

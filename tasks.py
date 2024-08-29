@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from fastapi import WebSocket
 from lnbits.core.models import Payment
@@ -6,13 +7,34 @@ from lnbits.settings import settings
 from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
-from .crud import get_charge, get_charge_by_onchain_address, update_charge
-from .helpers import call_webhook, sum_transactions
+from .crud import (
+    get_charge,
+    get_charge_by_onchain_address,
+    get_pending_charges,
+    update_charge,
+)
+from .helpers import call_webhook, check_charge_balance, sum_transactions
 from .models import Charge
 from .websocket_handler import ws_receive_queue, ws_send_queue
 
 tracked_addresses: list[str] = []
 public_ws_listeners: dict[str, list[WebSocket]] = {}
+
+
+async def restart_address_tracking():
+    charges = await get_pending_charges()
+    for charge in charges:
+        if (
+            charge.onchainaddress
+            and charge.timestamp.timestamp() + charge.time * 60 > time.time()
+        ):
+            charge = await check_charge_balance(charge)
+            assert charge.onchainaddress
+            if charge.paid:
+                await update_charge(charge)
+                logger.success(f"Charge {charge.id} marked as paid.")
+                continue
+            start_onchain_listener(charge.onchainaddress)
 
 
 async def wait_for_paid_invoices():
