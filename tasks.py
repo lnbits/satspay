@@ -7,7 +7,7 @@ from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
 from .crud import get_charge, get_charge_by_onchain_address, update_charge
-from .helpers import call_webhook, get_txids, sum_transactions
+from .helpers import call_webhook, sum_transactions
 from .models import Charge
 from .websocket_handler import ws_receive_queue, ws_send_queue
 
@@ -89,13 +89,14 @@ async def _handle_ws_message(address: str, data: dict):
     assert charge, f"Charge with address `{address}` does not exist."
     unconfirmed_balance = sum_transactions(address, data.get("mempool", []))
     confirmed_balance = sum_transactions(address, data.get("confirmed", []))
-    charge.add_extra({"txids": get_txids(address, data)})
+    unconfirmed_txids = [tx["txid"] for tx in data.get("mempool", [])]
+    confirmed_txids = [tx["txid"] for tx in data.get("confirmed", [])]
+    charge.add_extra({"txids": confirmed_txids + unconfirmed_txids})
     if charge.zeroconf:
         confirmed_balance += unconfirmed_balance
     charge.balance = confirmed_balance
     charge.pending = unconfirmed_balance
     charge.paid = charge.balance >= charge.amount
-    charge.add_extra({"txids": get_txids(address, data)})
     await send_success_websocket(charge)
     if charge.paid:
         logger.success(f"Charge {charge.id} onchain paid.")
