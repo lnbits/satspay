@@ -46,14 +46,16 @@ async def call_webhook(charge: Charge):
 async def fetch_onchain_balance(onchain_address: str) -> OnchainBalance:
     settings = await get_or_create_satspay_settings()
     async with httpx.AsyncClient() as client:
-        res = await client.get(f"{settings.mempool_url}/api/address/{onchain_address}")
+        res = await client.get(
+            f"{settings.mempool_url}/api/address/{onchain_address}/txs"
+        )
         res.raise_for_status()
         data = res.json()
-        # TODO: add txids to OnchainBalance
-        print(data)
-        txids = []  # type: ignore
-        confirmed = data["chain_stats"]["funded_txo_sum"]
-        unconfirmed = data["mempool_stats"]["funded_txo_sum"]
+        confirmed_txs = [tx for tx in data if tx["status"]["confirmed"]]
+        unconfirmed_txs = [tx for tx in data if not tx["status"]["confirmed"]]
+        txids = [tx["txid"] for tx in data]
+        confirmed = sum_transactions(onchain_address, confirmed_txs)
+        unconfirmed = sum_transactions(onchain_address, unconfirmed_txs)
         return OnchainBalance(confirmed=confirmed, unconfirmed=unconfirmed, txids=txids)
 
 
@@ -95,6 +97,7 @@ async def check_charge_balance(charge: Charge) -> Charge:
     if charge.onchainaddress:
         try:
             balance = await fetch_onchain_balance(charge.onchainaddress)
+            charge.add_extra({"txids": balance.txids})
             if (
                 balance.confirmed != charge.balance
                 or balance.unconfirmed != charge.pending
@@ -115,3 +118,29 @@ async def check_charge_balance(charge: Charge) -> Charge:
         charge.add_extra(resp)
 
     return charge
+
+
+def sum_outputs(address: str, vouts) -> int:
+    return sum(
+        [vout["value"] for vout in vouts if vout.get("scriptpubkey_address") == address]
+    )
+
+
+def sum_transactions(address: str, txs) -> int:
+    return sum([sum_outputs(address, tx["vout"]) for tx in txs])
+
+
+def get_txids(address: str, data) -> list[str]:
+    confirmed_txs = data.get("confirmed", [])
+    confirmed_txids = [
+        vout["txid"]
+        for vout in confirmed_txs
+        if vout.get("scriptpubkey_address") == address
+    ]
+    mempool_txs = data.get("mempool", [])
+    mempool_txids = [
+        vout["txid"]
+        for vout in mempool_txs
+        if vout.get("scriptpubkey_address") == address
+    ]
+    return confirmed_txids + mempool_txids

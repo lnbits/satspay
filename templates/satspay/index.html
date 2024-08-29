@@ -272,7 +272,7 @@
                       icon="refresh"
                       @click="sendWebhook(props.row.id)"
                       class="float-left q-mr-md q-mt-md"
-                      v-if="props.row.paid"
+                      v-if="props.row.paid && props.row.webhook"
                       >Resend Webhook</q-btn
                     >
                     <q-btn
