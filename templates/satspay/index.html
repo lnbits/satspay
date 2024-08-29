@@ -234,7 +234,7 @@
                   <div v-if="props.row.webhook">
                     Webhook Response:
                     <q-badge
-                      v-if="props.extra && props.row.extra.webhook_message"
+                      v-if="props.row.extra && props.row.extra.webhook_message"
                       @click="showWebhookResponseDialog(props.row.extra.webhook_response)"
                       color="blue"
                       class="cursor-pointer"
