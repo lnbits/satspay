@@ -1,4 +1,3 @@
-import time
 from typing import Optional
 
 from lnbits.core.services import create_invoice
