@@ -109,6 +109,11 @@ async def get_charge(charge_id: str) -> Optional[Charge]:
     return Charge(**row) if row else None
 
 
+async def get_pending_charges() -> list[Charge]:
+    rows = await db.fetchall("SELECT * FROM satspay.charges WHERE paid = false")
+    return [Charge(**row) for row in rows]
+
+
 async def get_charge_by_onchain_address(onchain_address: str) -> Optional[Charge]:
     row = await db.fetchone(
         "SELECT * FROM satspay.charges WHERE onchainaddress = ?", (onchain_address,)
