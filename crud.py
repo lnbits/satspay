@@ -55,11 +55,12 @@ async def create_charge(
             time,
             amount,
             zeroconf,
+            fasttrack,
             balance,
             extra,
             custom_css
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             charge_id,
@@ -77,6 +78,7 @@ async def create_charge(
             data.time,
             data.amount,
             data.zeroconf,
+            data.fasttrack,
             0,
             data.extra,
             data.custom_css,

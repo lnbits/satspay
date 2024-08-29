@@ -25,6 +25,7 @@ class CreateCharge(BaseModel):
     time: int = Query(..., ge=1)
     amount: Optional[int] = Query(None, ge=1)
     zeroconf: bool = Query(False)
+    fasttrack: bool = Query(False)
     custom_css: Optional[str] = Query(None)
     currency: str = Query(None)
     currency_amount: Optional[float] = Query(None)
@@ -47,6 +48,7 @@ class Charge(BaseModel):
     time: int
     amount: int
     zeroconf: bool
+    fasttrack: bool
     balance: int
     pending: Optional[int] = 0
     timestamp: datetime
@@ -61,6 +63,13 @@ class Charge(BaseModel):
         self.extra = json.dumps({**old_extra, **extra})
 
     @property
+    def paid_fasttrack(self):
+        """
+        ignore the pending status if fasttrack is enabled tell the frontend its paid
+        """
+        return (self.pending or 0) >= self.amount and self.fasttrack or self.paid
+
+    @property
     def public(self):
         public_keys = [
             "id",
@@ -72,6 +81,7 @@ class Charge(BaseModel):
             "time",
             "amount",
             "zeroconf",
+            "fasttrack",
             "balance",
             "pending",
             "timestamp",
@@ -81,7 +91,8 @@ class Charge(BaseModel):
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["timestamp"] = self.timestamp.isoformat()
-        if self.paid:
+        c["paid"] = self.paid_fasttrack
+        if self.paid_fasttrack:
             c["completelink"] = self.completelink
         return c
 

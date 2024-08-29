@@ -52,10 +52,12 @@ async def send_success_websocket(charge: Charge):
             for listener in listeners:
                 await listener.send_json(
                     {
-                        "paid": charge.paid,
+                        "paid": charge.paid_fasttrack,
                         "balance": charge.balance,
                         "pending": charge.pending,
-                        "completelink": charge.completelink if charge.paid else None,
+                        "completelink": (
+                            charge.completelink if charge.paid_fasttrack else None
+                        ),
                     }
                 )
 
