@@ -25,6 +25,7 @@ class CreateCharge(BaseModel):
     time: int = Query(..., ge=1)
     amount: Optional[int] = Query(None, ge=1)
     zeroconf: bool = Query(False)
+    fasttrack: bool = Query(False)
     custom_css: Optional[str] = Query(None)
     currency: str = Query(None)
     currency_amount: Optional[float] = Query(None)
@@ -47,6 +48,7 @@ class Charge(BaseModel):
     time: int
     amount: int
     zeroconf: bool
+    fasttrack: bool
     balance: int
     pending: Optional[int] = 0
     timestamp: datetime
@@ -72,6 +74,7 @@ class Charge(BaseModel):
             "time",
             "amount",
             "zeroconf",
+            "fasttrack",
             "balance",
             "pending",
             "timestamp",
