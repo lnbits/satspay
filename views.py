@@ -69,13 +69,17 @@ async def websocket_charge(websocket: WebSocket, charge_id: str):
             status_code=HTTPStatus.NOT_FOUND, detail="Charge link does not exist."
         )
     await websocket.accept()
-    public_ws_listeners[charge_id] = websocket
+    if charge_id not in public_ws_listeners:
+        public_ws_listeners[charge_id] = []
+    public_ws_listeners[charge_id].append(websocket)
     try:
         # Keep the connection alive
         while settings.lnbits_running:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        del public_ws_listeners[charge_id]
+        for ws in public_ws_listeners.get(charge_id, []):
+            if ws == websocket:
+                public_ws_listeners[charge_id].remove(ws)
 
 
 @satspay_generic_router.get("/css/{css_id}")

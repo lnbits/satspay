@@ -12,7 +12,7 @@ from .models import Charge
 from .websocket_handler import ws_receive_queue, ws_send_queue
 
 tracked_addresses: list[str] = []
-public_ws_listeners: dict[str, WebSocket] = {}
+public_ws_listeners: dict[str, list[WebSocket]] = {}
 
 
 async def wait_for_paid_invoices():
@@ -25,16 +25,17 @@ async def wait_for_paid_invoices():
 
 
 async def send_success_websocket(charge: Charge):
-    for charge_id, listener in public_ws_listeners.items():
+    for charge_id, listeners in public_ws_listeners.items():
         if charge_id == charge.id:
-            await listener.send_json(
-                {
-                    "paid": charge.paid,
-                    "balance": charge.balance,
-                    "pending": charge.pending,
-                    "completelink": charge.completelink if charge.paid else None,
-                }
-            )
+            for listener in listeners:
+                await listener.send_json(
+                    {
+                        "paid": charge.paid,
+                        "balance": charge.balance,
+                        "pending": charge.pending,
+                        "completelink": charge.completelink if charge.paid else None,
+                    }
+                )
 
 
 async def on_invoice_paid(payment: Payment) -> None:
