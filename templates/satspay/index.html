@@ -456,7 +456,7 @@
             :options="walletLinks"
             label="Onchain Wallet"
           ></q-select>
-          <q-item tag="label" v-ripple>
+          <q-item tag="label" v-ripple v-if="!formDialogCharge.data.fasttrack">
             <q-item-section avatar top>
               <q-checkbox v-model="formDialogCharge.data.zeroconf" />
             </q-item-section>
@@ -469,18 +469,22 @@
               </q-item-label>
             </q-item-section>
           </q-item>
-          <q-item tag="label" v-ripple>
+          <q-item tag="label" v-ripple v-if="!formDialogCharge.data.zeroconf">
             <q-item-section avatar top>
               <q-checkbox v-model="formDialogCharge.data.fasttrack" />
             </q-item-section>
             <q-item-section>
-              <q-item-label>Redirect in checkout if onchain payment is pending.</q-item-label>
+              <q-item-label
+                >Fastrack redirect in checkout without 0-conf.</q-item-label
+              >
               <q-item-label caption>
                 If enabled, the user will be redirected from the checkout page
-                once the onchain payment is detected (0-conf). Unlike 0-conf it will wait
-                for the onchain to be confirmed to send a webhook with charge is paid.
+                once the onchain payment is detected (0-conf). Unlike 0-conf it
+                will wait for the onchain to be confirmed to send a webhook with
+                charge is paid.
               </q-item-label>
             </q-item-section>
+          </q-item>
         </div>
 
         <q-select

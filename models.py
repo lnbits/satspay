@@ -63,6 +63,13 @@ class Charge(BaseModel):
         self.extra = json.dumps({**old_extra, **extra})
 
     @property
+    def paid_fasttrack(self):
+        """
+        ignore the pending status if fasttrack is enabled tell the frontend its paid
+        """
+        return (self.pending or 0) >= self.amount and self.fasttrack or self.paid
+
+    @property
     def public(self):
         public_keys = [
             "id",
@@ -84,7 +91,8 @@ class Charge(BaseModel):
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["timestamp"] = self.timestamp.isoformat()
-        if self.paid:
+        c["paid"] = self.paid_fasttrack
+        if self.paid_fasttrack:
             c["completelink"] = self.completelink
         return c
 

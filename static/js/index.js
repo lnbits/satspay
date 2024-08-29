@@ -139,6 +139,7 @@ new Vue({
           onchain: false,
           onchainwallet: '',
           zeroconf: false,
+          fasttrack: false,
           lnbits: false,
           description: '',
           custom_css: '',
