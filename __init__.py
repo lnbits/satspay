@@ -44,7 +44,7 @@ def satspay_start():
     onchain_task = create_permanent_unique_task("ext_satspay_onchain", wait_for_onchain)
     scheduled_tasks.extend([paid_invoices_task, onchain_task])
     restart_websocket_task()
-    create_unique_task("restart_address_tracking", restart_address_tracking())
+    create_unique_task("ext_satspay_restart_address_tracking", restart_address_tracking())
 
 
 __all__ = ["db", "satspay_ext", "satspay_static_files", "satspay_start", "satspay_stop"]
