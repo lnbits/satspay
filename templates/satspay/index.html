@@ -307,18 +307,15 @@
           {% raw %}
           <template v-slot:header="props">
             <q-tr :props="props">
+              <q-th auto-width></q-th>
               <q-th v-for="col in props.cols" :key="col.name" :props="props">
                 {{ col.label }}
               </q-th>
-              <q-th auto-width></q-th>
             </q-tr>
           </template>
 
           <template v-slot:body="props">
             <q-tr :props="props">
-              <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.value }}
-              </q-td>
               <q-td auto-width>
                 <q-btn
                   flat
@@ -328,8 +325,6 @@
                   icon="edit"
                   color="light-blue"
                 ></q-btn>
-              </q-td>
-              <q-td auto-width>
                 <q-btn
                   flat
                   dense
@@ -338,6 +333,9 @@
                   icon="cancel"
                   color="pink"
                 ></q-btn>
+              </q-td>
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                {{ col.value }}
               </q-td>
             </q-tr>
           </template>

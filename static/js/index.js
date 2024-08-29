@@ -117,16 +117,16 @@ new Vue({
       customCSSTable: {
         columns: [
           {
-            name: 'css_id',
-            align: 'left',
-            label: 'ID',
-            field: 'css_id'
-          },
-          {
             name: 'title',
             align: 'left',
             label: 'Title',
             field: 'title'
+          },
+          {
+            name: 'css_id',
+            align: 'left',
+            label: 'ID',
+            field: 'css_id'
           }
         ],
         pagination: {
