@@ -58,9 +58,11 @@ async def create_charge(
             fasttrack,
             balance,
             extra,
-            custom_css
+            custom_css,
+            currency,
+            currency_amount
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             charge_id,
@@ -82,6 +84,8 @@ async def create_charge(
             0,
             data.extra,
             data.custom_css,
+            data.currency,
+            data.currency_amount,
         ),
     )
     charge = await get_charge(charge_id)
