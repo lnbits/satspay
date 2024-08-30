@@ -92,6 +92,7 @@ async def check_charge_balance(charge: Charge) -> Charge:
         assert payment, "Payment not found."
         status = await payment.check_status()
         if status.success:
+            charge.add_extra({"payment_method": "lightning"})
             charge.balance = charge.amount
 
     if charge.onchainaddress:
@@ -108,6 +109,7 @@ async def check_charge_balance(charge: Charge) -> Charge:
                     else balance.confirmed
                 )
                 charge.pending = balance.unconfirmed
+                charge.add_extra({"payment_method": "onchain"})
         except Exception as exc:
             logger.warning(f"Charge check onchain address failed with: {exc!s}")
 

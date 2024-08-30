@@ -31,6 +31,7 @@ async def restart_address_tracking():
             charge = await check_charge_balance(charge)
             assert charge.onchainaddress
             if charge.paid:
+                charge.add_extra({"payment_method": "onchain"})
                 await update_charge(charge)
                 logger.success(f"Charge {charge.id} marked as paid.")
                 continue
@@ -77,6 +78,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         charge.balance = int(payment.amount / 1000)
         charge.paid = True
         logger.success(f"Charge {charge.id} invoice paid.")
+        charge.add_extra({"payment_method": "lightning"})
         await send_success_websocket(charge)
         if charge.webhook:
             resp = await call_webhook(charge)
@@ -124,6 +126,7 @@ async def _handle_ws_message(address: str, data: dict):
     charge.paid = charge.balance >= charge.amount
     await send_success_websocket(charge)
     if charge.paid:
+        charge.add_extra({"payment_method": "onchain"})
         logger.success(f"Charge {charge.id} onchain paid.")
         stop_onchain_listener(address)
     if charge.webhook:
