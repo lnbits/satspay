@@ -88,7 +88,7 @@ async def check_charge_balance(charge: Charge) -> Charge:
         return charge
 
     if charge.lnbitswallet and charge.payment_hash:
-        payment = await get_standalone_payment(charge.payment_hash)
+        payment = await get_standalone_payment(charge.payment_hash, incoming=True)
         assert payment, "Payment not found."
         status = await payment.check_status()
         if status.success:
