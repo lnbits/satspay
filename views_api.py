@@ -113,9 +113,11 @@ async def api_charges_retrieve(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
 )
 @satspay_api_router.get(
-    "/api/v1/charge/balance/{charge_id}", dependencies=[Depends(require_invoice_key)]
+    "/api/v1/charge/balance/{charge_id}",
+    dependencies=[Depends(require_invoice_key)],
+    deprecated=True,
 )
-async def api_charge_retrieve(charge_id: str) -> dict:
+async def api_charge_retrieve(charge_id: str) -> Charge:
     """
     This endpoint is used by the woocommerce plugin to check if the status of a charge
     is paid. you can refresh the success page of the webshop to trigger this endpoint.
@@ -127,7 +129,7 @@ async def api_charge_retrieve(charge_id: str) -> dict:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
         )
-    return charge.public
+    return charge
 
 
 @satspay_api_router.put(
