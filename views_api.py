@@ -112,6 +112,9 @@ async def api_charges_retrieve(
 @satspay_api_router.get(
     "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
 )
+@satspay_api_router.get(
+    "/api/v1/charge/balance/{charge_id}", dependencies=[Depends(require_invoice_key)]
+)
 async def api_charge_retrieve(charge_id: str) -> dict:
     """
     This endpoint is used by the woocommerce plugin to check if the status of a charge
@@ -127,7 +130,7 @@ async def api_charge_retrieve(charge_id: str) -> dict:
     return charge.public
 
 
-@satspay_api_router.get(
+@satspay_api_router.put(
     "/api/v1/charge/balance/{charge_id}", dependencies=[Depends(require_admin_key)]
 )
 async def api_charge_check_balance(charge_id: str) -> Charge:

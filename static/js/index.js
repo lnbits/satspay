@@ -379,7 +379,7 @@ new Vue({
     checkChargeBalance: function (chargeId) {
       LNbits.api
         .request(
-          'GET',
+          'PUT',
           `/satspay/api/v1/charge/balance/${chargeId}`,
           this.g.user.wallets[0].adminkey
         )
