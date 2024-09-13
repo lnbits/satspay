@@ -34,6 +34,7 @@ class CreateCharge(BaseModel):
 
 class Charge(BaseModel):
     id: str
+    user: str
     name: Optional[str]
     description: Optional[str]
     onchainwallet: Optional[str]

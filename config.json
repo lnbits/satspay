@@ -2,7 +2,7 @@
   "name": "SatsPay Server",
   "short_description": "Create onchain and LN charges",
   "tile": "/satspay/static/image/satspay.png",
-  "min_lnbits_version": "0.12.5",
+  "min_lnbits_version": "1.0.0",
   "contributors": [
     {
       "name": "motorina0",

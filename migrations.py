@@ -1,7 +1,8 @@
+from lnbits.db import Database
 from sqlalchemy.exc import OperationalError
 
 
-async def m001_initial(db):
+async def m001_initial(db: Database):
     """
     Initial wallet table.
     """
@@ -31,7 +32,7 @@ async def m001_initial(db):
     )
 
 
-async def m002_add_charge_extra_data(db):
+async def m002_add_charge_extra_data(db: Database):
     """
     Add 'extra' column for storing various config about the charge (JSON format)
     """
@@ -44,7 +45,7 @@ async def m002_add_charge_extra_data(db):
     )
 
 
-async def m003_add_themes_table(db):
+async def m003_add_themes_table(db: Database):
     """
     Themes table
     """
@@ -61,7 +62,7 @@ async def m003_add_themes_table(db):
     )
 
 
-async def m004_add_custom_css_to_charges(db):
+async def m004_add_custom_css_to_charges(db: Database):
     """
     Add custom css option column to the 'charges' table
     """
@@ -69,7 +70,7 @@ async def m004_add_custom_css_to_charges(db):
     await db.execute("ALTER TABLE satspay.charges ADD COLUMN custom_css TEXT;")
 
 
-async def m005_add_charge_last_accessed_at_column(db):
+async def m005_add_charge_last_accessed_at_column(db: Database):
     """
     Add 'last_accessed_at' column for storing the last updated time
     """
@@ -78,7 +79,7 @@ async def m005_add_charge_last_accessed_at_column(db):
     )
 
 
-async def m006_add_zeroconf_column(db):
+async def m006_add_zeroconf_column(db: Database):
     """
     Add 'zeroconf' column for allowing zero confirmation payments
     """
@@ -99,7 +100,7 @@ async def m006_add_zeroconf_column(db):
         pass
 
 
-async def m007_add_pending_column(db):
+async def m007_add_pending_column(db: Database):
     """
     Add 'pending' column for storing the pending amount
     """
@@ -121,7 +122,7 @@ async def m007_add_pending_column(db):
         pass
 
 
-async def m008_add_name_column(db):
+async def m008_add_name_column(db: Database):
     """
     Add 'name' column for storing the name of the charge
     """
@@ -131,7 +132,7 @@ async def m008_add_name_column(db):
         pass
 
 
-async def m009_settings(db):
+async def m009_settings(db: Database):
     """
     Add settings table
     """
@@ -147,7 +148,7 @@ async def m009_settings(db):
         pass
 
 
-async def m010_add_fiat(db):
+async def m010_add_fiat(db: Database):
     """
     Add 'currency' and 'currency_amount' columns for storing the fiat amount
     """
@@ -158,7 +159,7 @@ async def m010_add_fiat(db):
         pass
 
 
-async def m011_persist_paid(db):
+async def m011_persist_paid(db: Database):
     """
     Add 'paid' column for storing the charge status
     """
@@ -177,7 +178,7 @@ async def m011_persist_paid(db):
         pass
 
 
-async def m012_add_setting_network(db):
+async def m012_add_setting_network(db: Database):
     """
     Add 'network' column for storing the network
     """
@@ -188,7 +189,7 @@ async def m012_add_setting_network(db):
         pass
 
 
-async def m013_add_setting_webhook(db):
+async def m013_add_setting_webhook(db: Database):
     """
     Add 'webhook_method' column for storing the webhook method
     """
@@ -199,7 +200,7 @@ async def m013_add_setting_webhook(db):
         pass
 
 
-async def m014_fasttrack_to_charge(db):
+async def m014_fasttrack_to_charge(db: Database):
     """
     Add 'fasttrack' column to charge for allowing fasttrack checkout without 0conf
     """

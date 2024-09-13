@@ -4,7 +4,6 @@
   <div class="col-12 col-md-7 q-gutter-y-md">
     <q-card>
       <q-card-section>
-        {% raw %}
         <q-btn unelevated color="primary" @click="formDialogCharge.show = true"
           >New charge
         </q-btn>
@@ -159,30 +158,30 @@
                   :href="props.row.displayUrl"
                   target="_blank"
                   style="color: unset; text-decoration: none"
-                  >{{props.row.name}}</a
-                >
+                  v-text="props.row.name"
+                ></a>
               </q-td>
               <q-td key="timeLeft" :props="props" :class="">
                 <div v-if="props.row.paid">
                   <q-linear-progress :value="1"></q-linear-progress>
                 </div>
                 <div v-else>
-                  <div>{{props.row.timeLeft}}</div>
+                  <div v-text="props.row.timeLeft"></div>
                   <q-linear-progress
-                    :value="props.row.progress"
+                    v-model="props.row.progress"
                     color="secondary"
                   >
                   </q-linear-progress>
                 </div>
               </q-td>
               <q-td key="amount" :props="props" :class="">
-                <div>{{props.row.amount}}</div>
+                <div v-text="props.row.amount"></div>
               </q-td>
               <q-td key="balance" :props="props" :class="">
-                <div>{{props.row.balance}}</div>
+                <div v-text="props.row.balance"></div>
               </q-td>
               <q-td key="pending" :props="props" :class="">
-                <div>{{props.row.pending ? props.row.pending: ''}}</div>
+                <div v-text="props.row.pending ? props.row.pending: ''"></div>
               </q-td>
               <q-td key="onchain address" :props="props" :class="">
                 <a
@@ -190,22 +189,28 @@
                   :href="props.row.displayUrl"
                   target="_blank"
                   style="color: unset; text-decoration: none"
-                  >{{props.row.onchainaddress}}</a
-                >
+                  v-text="props.row.onchainaddress"
+                ></a>
               </q-td>
             </q-tr>
             <q-tr v-show="props.row.expanded" :props="props">
               <q-td colspan="100%">
                 <div style="padding: 12px">
-                  <div>ID: {{props.row.id}}</div>
-                  <div>Description: {{props.row.description}}</div>
+                  <div>ID: <span v-text="props.row.id"></span></div>
+                  <div>
+                    Description: <span v-text="props.row.description"></span>
+                  </div>
                   <div v-if="props.row.onchainwallet">
                     Onchain Wallet:
-                    {{getOnchainWalletName(props.row.onchainwallet)}}
+                    <span
+                      v-text="getOnchainWalletName(props.row.onchainwallet)"
+                    ></span>
                   </div>
                   <div v-if="props.row.lnbitswallet">
                     LNbits Wallet:
-                    {{getLNbitsWalletName(props.row.lnbitswallet)}}
+                    <span
+                      v-text="getLNbitsWalletName(props.row.lnbitswallet)"
+                    ></span>
                   </div>
 
                   <div
@@ -217,9 +222,8 @@
                       :href="props.row.completelink"
                       target="_blank"
                       style="color: unset; text-decoration: none"
-                      >{{props.row.completelinktext ||
-                      props.row.completelink}}</a
-                    >
+                      v-text="props.row.completelinktext || props.row.completelink"
+                    ></a>
                   </div>
                   <div v-if="props.row.webhook">
                     Webhook:
@@ -228,8 +232,8 @@
                       :href="props.row.webhook"
                       target="_blank"
                       style="color: unset; text-decoration: none"
-                      >{{props.row.webhook}}</a
-                    >
+                      v-text="props.row.webhook"
+                    ></a>
                   </div>
                   <div v-if="props.row.webhook">
                     Webhook Response:
@@ -239,7 +243,7 @@
                       color="blue"
                       class="cursor-pointer"
                     >
-                      {{props.row.extra.webhook_message }}
+                      <span v-text="props.row.extra.webhook_message"></span>
                     </q-badge>
                     <span v-else>no response yet</span>
                   </div>
@@ -284,7 +288,6 @@
               </q-td>
             </q-tr>
           </template>
-          {% endraw %}
         </q-table>
       </q-card-section>
     </q-card>
@@ -299,17 +302,16 @@
         <q-table
           dense
           flat
-          :data="themeLinks"
+          :rows="themeLinks"
           row-key="id"
           :columns="customCSSTable.columns"
           :pagination.sync="customCSSTable.pagination"
         >
-          {% raw %}
           <template v-slot:header="props">
             <q-tr :props="props">
               <q-th auto-width></q-th>
               <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.label }}
+                <span v-text="col.label"></span>
               </q-th>
             </q-tr>
           </template>
@@ -335,11 +337,10 @@
                 ></q-btn>
               </q-td>
               <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.value }}
+                <span v-text="col.value"></span>
               </q-td>
             </q-tr>
           </template>
-          {% endraw %}
         </q-table>
       </q-card-section>
     </q-card>
@@ -348,9 +349,7 @@
   <div class="col-12 col-md-5 q-gutter-y-md">
     <q-card>
       <q-card-section>
-        <h6 class="text-subtitle1 q-my-none">
-          {{SITE_TITLE}} satspay Extension
-        </h6>
+        <h6 class="text-subtitle1 q-my-none">Satspay Extension</h6>
       </q-card-section>
       <q-card-section class="q-pa-none">
         <q-separator></q-separator>
