@@ -3,7 +3,7 @@ from typing import Optional
 
 from lnbits.core.services import create_invoice
 from lnbits.db import Database
-from lnbits.helpers import insert_query, update_query, urlsafe_short_hash
+from lnbits.helpers import urlsafe_short_hash
 
 from .models import (
     Charge,
@@ -65,18 +65,12 @@ async def create_charge(
         )
         charge.payment_hash = payment_hash
         charge.payment_request = payment_request
-    await db.execute(
-        insert_query("satspay.charges", charge),
-        charge.dict(),
-    )
+    await db.insert("satspay.charges", charge)
     return charge
 
 
 async def update_charge(charge: Charge) -> Charge:
-    await db.execute(
-        update_query("satspay.charges", charge),
-        charge.dict(),
-    )
+    await db.update("satspay.charges", charge)
     return charge
 
 
@@ -122,18 +116,12 @@ async def create_theme(data: CreateSatsPayTheme, user_id: str) -> SatsPayTheme:
         custom_css=data.custom_css,
         user=user_id,
     )
-    await db.execute(
-        insert_query("satspay.themes", theme),
-        theme.dict(),
-    )
+    await db.insert("satspay.themes", theme)
     return theme
 
 
 async def update_theme(theme: SatsPayTheme) -> SatsPayTheme:
-    await db.execute(
-        update_query("satspay.themes", theme, "css_id = :css_id"),
-        theme.dict(),
-    )
+    await db.update("satspay.themes", theme, "WHERE css_id = :css_id")
     return theme
 
 
@@ -166,16 +154,13 @@ async def get_or_create_satspay_settings() -> SatspaySettings:
         return SatspaySettings(**row)
     else:
         settings = SatspaySettings()
-        await db.execute(insert_query("satspay.settings", settings), settings.dict())
+        await db.insert("satspay.settings", settings)
         return settings
 
 
 async def update_satspay_settings(settings: SatspaySettings) -> SatspaySettings:
-    await db.execute(
-        # 3rd arguments `WHERE clause` is empty for settings
-        update_query("satspay.settings", settings, ""),
-        settings.dict(),
-    )
+    # 3rd arguments `WHERE clause` is empty for settings
+    await db.update("satspay.settings", settings, "")
     return settings
 
 
