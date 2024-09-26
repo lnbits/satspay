@@ -73,10 +73,10 @@
         <q-table
           flat
           dense
-          :data="chargeLinks"
+          :rows="chargeLinks"
           row-key="id"
           :columns="chargesTable.columns"
-          :pagination.sync="chargesTable.pagination"
+          v-model:pagination="chargesTable.pagination"
           :filter="filter"
         >
           <template v-slot:header="props">
@@ -161,7 +161,7 @@
                   v-text="props.row.name"
                 ></a>
               </q-td>
-              <q-td key="timeLeft" :props="props" :class="">
+              <q-td key="timeLeft" :props="props">
                 <div v-if="props.row.paid">
                   <q-linear-progress :value="1"></q-linear-progress>
                 </div>
@@ -174,16 +174,16 @@
                   </q-linear-progress>
                 </div>
               </q-td>
-              <q-td key="amount" :props="props" :class="">
+              <q-td key="amount" :props="props">
                 <div v-text="props.row.amount"></div>
               </q-td>
-              <q-td key="balance" :props="props" :class="">
+              <q-td key="balance" :props="props">
                 <div v-text="props.row.balance"></div>
               </q-td>
-              <q-td key="pending" :props="props" :class="">
+              <q-td key="pending" :props="props">
                 <div v-text="props.row.pending ? props.row.pending: ''"></div>
               </q-td>
-              <q-td key="onchain address" :props="props" :class="">
+              <q-td key="onchain address" :props="props">
                 <a
                   class="text-secondary"
                   :href="props.row.displayUrl"
@@ -305,7 +305,7 @@
           :rows="themeLinks"
           row-key="id"
           :columns="customCSSTable.columns"
-          :pagination.sync="customCSSTable.pagination"
+          v-model:pagination="customCSSTable.pagination"
         >
           <template v-slot:header="props">
             <q-tr :props="props">
