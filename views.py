@@ -33,7 +33,7 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
         "satspay/index.html",
         {
             "request": request,
-            "user": user.dict(),
+            "user": user.json(),
             "admin": user.admin,
             "network": settings.network,
         },

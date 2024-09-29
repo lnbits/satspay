@@ -65,44 +65,46 @@ async def create_charge(
         )
         charge.payment_hash = payment_hash
         charge.payment_request = payment_request
-    await db.insert("satspay.charges", charge)
+    await db.insert("satspay.charges", charge)  # type: ignore
     return charge
 
 
 async def update_charge(charge: Charge) -> Charge:
-    await db.update("satspay.charges", charge)
+    await db.update("satspay.charges", charge)  # type: ignore
     return charge
 
 
 async def get_charge(charge_id: str) -> Optional[Charge]:
-    row = await db.fetchone(
+    return await db.fetchone(
         "SELECT * FROM satspay.charges WHERE id = :id",
         {"id": charge_id},
+        Charge,  # type: ignore
     )
-    return Charge(**row) if row else None
 
 
 async def get_pending_charges() -> list[Charge]:
-    rows = await db.fetchall("SELECT * FROM satspay.charges WHERE paid = false")
-    return [Charge(**row) for row in rows]
+    return await db.fetchall(
+        "SELECT * FROM satspay.charges WHERE paid = false",
+        model=Charge,  # type: ignore
+    )
 
 
 async def get_charge_by_onchain_address(onchain_address: str) -> Optional[Charge]:
-    row = await db.fetchone(
+    return await db.fetchone(
         "SELECT * FROM satspay.charges WHERE onchainaddress = :address",
         {"address": onchain_address},
+        Charge,  # type: ignore
     )
-    return Charge(**row) if row else None
 
 
 async def get_charges(user: str) -> list[Charge]:
-    rows = await db.fetchall(
+    return await db.fetchall(
         """
         SELECT * FROM satspay.charges WHERE "user" = :user ORDER BY "timestamp" DESC
         """,
         {"user": user},
+        Charge,  # type: ignore
     )
-    return [Charge(**row) for row in rows]
 
 
 async def delete_charge(charge_id: str) -> None:
@@ -116,30 +118,31 @@ async def create_theme(data: CreateSatsPayTheme, user_id: str) -> SatsPayTheme:
         custom_css=data.custom_css,
         user=user_id,
     )
-    await db.insert("satspay.themes", theme)
+    await db.insert("satspay.themes", theme)  # type: ignore
     return theme
 
 
 async def update_theme(theme: SatsPayTheme) -> SatsPayTheme:
-    await db.update("satspay.themes", theme, "WHERE css_id = :css_id")
+    await db.update("satspay.themes", theme, "WHERE css_id = :css_id")  # type: ignore
     return theme
 
 
 async def get_theme(css_id: str) -> Optional[SatsPayTheme]:
-    row = await db.fetchone(
-        "SELECT * FROM satspay.themes WHERE css_id = :css_id", {"css_id": css_id}
+    return await db.fetchone(
+        "SELECT * FROM satspay.themes WHERE css_id = :css_id",
+        {"css_id": css_id},
+        SatsPayTheme,  # type: ignore
     )
-    return SatsPayTheme(**row) if row else None
 
 
 async def get_themes(user_id: str) -> list[SatsPayTheme]:
-    rows = await db.fetchall(
+    return await db.fetchall(
         """
         SELECT * FROM satspay.themes WHERE "user" = :user ORDER BY title DESC
         """,
         {"user": user_id},
+        SatsPayTheme,  # type: ignore
     )
-    return [SatsPayTheme(**row) for row in rows]
 
 
 async def delete_theme(theme_id: str) -> None:
@@ -149,18 +152,21 @@ async def delete_theme(theme_id: str) -> None:
 
 
 async def get_or_create_satspay_settings() -> SatspaySettings:
-    row = await db.fetchone("SELECT * FROM satspay.settings LIMIT 1")
-    if row:
-        return SatspaySettings(**row)
+    settings = await db.fetchone(
+        "SELECT * FROM satspay.settings LIMIT 1",
+        model=SatspaySettings,  # type: ignore
+    )
+    if settings:
+        return settings
     else:
         settings = SatspaySettings()
-        await db.insert("satspay.settings", settings)
+        await db.insert("satspay.settings", settings)  # type: ignore
         return settings
 
 
 async def update_satspay_settings(settings: SatspaySettings) -> SatspaySettings:
     # 3rd arguments `WHERE clause` is empty for settings
-    await db.update("satspay.settings", settings, "")
+    await db.update("satspay.settings", settings, "")  # type: ignore
     return settings
 
 
