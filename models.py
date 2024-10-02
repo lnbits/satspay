@@ -35,28 +35,27 @@ class CreateCharge(BaseModel):
 class Charge(BaseModel):
     id: str
     user: str
-    name: Optional[str]
-    description: Optional[str]
-    onchainwallet: Optional[str]
-    onchainaddress: Optional[str]
-    lnbitswallet: Optional[str]
-    payment_request: Optional[str]
-    payment_hash: Optional[str]
-    webhook: Optional[str]
-    completelink: Optional[str]
-    completelinktext: Optional[str] = "Back to Merchant"
-    custom_css: Optional[str]
-    time: int
     amount: int
-    zeroconf: bool
-    fasttrack: bool
-    balance: int
-    pending: Optional[int] = 0
+    time: int
     timestamp: datetime
-    last_accessed_at: Optional[datetime] = None  # unused, TODO: remove
+    balance: int = 0
+    pending: int = 0
+    zeroconf: bool = False
+    fasttrack: bool = False
+    paid: bool = False
+    completelinktext: Optional[str] = "Back to Merchant"
+    name: Optional[str] = None
+    description: Optional[str] = None
+    onchainwallet: Optional[str] = None
+    onchainaddress: Optional[str] = None
+    lnbitswallet: Optional[str] = None
+    payment_request: Optional[str] = None
+    payment_hash: Optional[str] = None
+    webhook: Optional[str] = None
+    completelink: Optional[str] = None
+    custom_css: Optional[str] = None
     currency: Optional[str] = None
     currency_amount: Optional[float] = None
-    paid: bool = False
     extra: Optional[str] = None
 
     def add_extra(self, extra: dict):
@@ -91,7 +90,6 @@ class Charge(BaseModel):
             "completelinktext",
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
-        c["timestamp"] = self.timestamp.isoformat()
         c["paid"] = self.paid_fasttrack
         if self.paid_fasttrack:
             c["completelink"] = self.completelink

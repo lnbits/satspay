@@ -123,7 +123,7 @@ async def create_theme(data: CreateSatsPayTheme, user_id: str) -> SatsPayTheme:
 
 
 async def update_theme(theme: SatsPayTheme) -> SatsPayTheme:
-    await db.update("satspay.themes", theme, "WHERE css_id = :css_id")  # type: ignore
+    await db.update("satspay.themes", theme, "css_id = :css_id")  # type: ignore
     return theme
 
 
