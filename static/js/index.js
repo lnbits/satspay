@@ -1,6 +1,6 @@
-new Vue({
+window.app = Vue.createApp({
   el: '#vue',
-  mixins: [windowMixin],
+  mixins: [window.windowMixin],
   computed: {
     endpoint() {
       return `/satspay/api/v1/settings?usr=${this.g.user.id}`
@@ -426,9 +426,7 @@ new Vue({
           rates[currency] = response.data.rate
           this.fiatRates = rates
         })
-        .catch(err => {
-          LNbits.utils.notifyApiError(err)
-        })
+        .catch(LNbits.utils.notifyApiError)
     }
   },
   created: async function () {
@@ -443,8 +441,6 @@ new Vue({
         this.currencies = ['satoshis', ...response.data]
         this.formDialogCharge.data.currency = 'satoshis'
       })
-      .catch(err => {
-        LNbits.utils.notifyApiError(err)
-      })
+      .catch(LNbits.utils.notifyApiError)
   }
 })

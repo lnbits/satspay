@@ -64,7 +64,7 @@ async def send_success_websocket(charge: Charge):
 
 
 async def on_invoice_paid(payment: Payment) -> None:
-    if payment.extra.get("tag") != "charge":
+    if not payment.extra or payment.extra.get("tag") != "charge":
         return
 
     charge_id = payment.extra.get("charge")
