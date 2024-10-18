@@ -89,11 +89,11 @@ async def check_charge_balance(charge: Charge) -> Charge:
 
     if charge.lnbitswallet and charge.payment_hash:
         payment = await get_standalone_payment(charge.payment_hash)
-        assert payment, "Payment not found."
-        status = await payment.check_status()
-        if status.success:
-            charge.add_extra({"payment_method": "lightning"})
-            charge.balance = charge.amount
+        if payment:
+            status = await payment.check_status()
+            if status.success:
+                charge.add_extra({"payment_method": "lightning"})
+                charge.balance = charge.amount
 
     if charge.onchainaddress:
         try:
