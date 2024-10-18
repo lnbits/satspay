@@ -10,17 +10,15 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 from lnbits.settings import settings
-from starlette.responses import HTMLResponse
 
 from .crud import get_charge, get_or_create_satspay_settings, get_theme
 from .tasks import public_ws_listeners
 
-templates = Jinja2Templates(directory="templates")
 satspay_generic_router = APIRouter()
 
 
@@ -35,7 +33,7 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
         "satspay/index.html",
         {
             "request": request,
-            "user": user.dict(),
+            "user": user.json(),
             "admin": user.admin,
             "network": settings.network,
         },

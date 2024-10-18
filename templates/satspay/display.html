@@ -195,10 +195,10 @@
 </style>
 {% endblock %} {% block scripts %}
 <script>
-  const charge_data = JSON.parse({{ charge_data|tojson }});
+  const charge_data = JSON.parse({{ charge_data | tojson | safe }});
   const mempool_url = "{{ mempool_url }}";
 </script>
 <script src="{{ static_url_for('satspay/static', path='js/utils.js') }}"></script>
-<script src="{{ static_url_for('satspay/static', path='js/components.js') }}"></script>
 <script src="{{ static_url_for('satspay/static', path='js/display.js') }}"></script>
+<script src="{{ static_url_for('satspay/static', path='js/components.js') }}"></script>
 {% endblock %}
