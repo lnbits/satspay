@@ -91,6 +91,7 @@ class Charge(BaseModel):
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["paid"] = self.paid_fasttrack
+        c["timestamp"] = self.timestamp.isoformat()
         if self.paid_fasttrack:
             c["completelink"] = self.completelink
         return c
