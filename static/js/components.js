@@ -1,6 +1,4 @@
-Vue.component(VueQrcode.name, VueQrcode)
-
-Vue.component('satspay-paid', {
+window.app.component('satspay-paid', {
   props: ['charge'],
   template: `
   <div>
@@ -29,7 +27,7 @@ Vue.component('satspay-paid', {
   </div>`
 })
 
-Vue.component('satspay-show-qr', {
+window.app.component('satspay-show-qr', {
   props: ['charge-amount', 'type', 'value', 'href'],
   mixins: [windowMixin],
   template: `
@@ -67,7 +65,7 @@ Vue.component('satspay-show-qr', {
   }
 })
 
-Vue.component('satspay-time-elapsed', {
+window.app.component('satspay-time-elapsed', {
   props: ['charge'],
   data() {
     return {
