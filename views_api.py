@@ -45,6 +45,9 @@ async def _get_wallet_network(wallet: Wallet) -> str:
         ) from exc
     return network
 
+@satspay_api_router.get("/api/v1")
+async def api_enabled() -> dict:
+    return {"message": "SatsPay API enabled."}
 
 @satspay_api_router.post("/api/v1/charge")
 async def api_charge_create(
