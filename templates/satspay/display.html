@@ -8,8 +8,7 @@
           class="text-subtitle1"
           v-for="line in charge.description.split('\n')"
           v-text="line"
-        >
-        </div>
+        ></div>
       </q-card-section>
       <satspay-time-elapsed :charge="charge"></satspay-time-elapsed>
       <q-card-section>
@@ -20,8 +19,7 @@
               class="text-uppercase text-secondary cursor-pointer"
               @click="copyText(charge.id)"
               v-text="charge.id"
-              ></span
-            >
+            ></span>
           </q-item-label>
           <q-item dense>
             <q-item-section>
@@ -70,10 +68,10 @@
 
             <q-item-section side>
               <q-badge color="green">
-                <span class="text-subtitle2"
+                <span
+                  class="text-subtitle2"
                   v-text="charge.amount - charge.balance > 0 ? charge.amount - charge.balance : 0"
-                  ></span
-                >
+                ></span>
                 <span>&nbsp;sats</span>
               </q-badge>
             </q-item-section>
