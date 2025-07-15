@@ -1,7 +1,6 @@
 window.app = Vue.createApp({
   el: '#vue',
   mixins: [window.windowMixin],
-  delimiters: ['${', '}'],
   data() {
     return {
       charge: mapCharge(charge_data),
@@ -20,7 +19,7 @@ window.app = Vue.createApp({
       return `${url}/address/${this.charge.onchainaddress}`
     },
     unifiedQR() {
-      const bitcoin = (this.charge.onchainaddress || '').toUpperCase()
+      const bitcoin = (this.charge.onchainaddress ?? '').toUpperCase()
       let queryString = `bitcoin:${bitcoin}?amount=${(
         this.charge.amount / 1e8
       ).toFixed(8)}`
@@ -38,7 +37,7 @@ window.app = Vue.createApp({
     }
   },
   methods: {
-    initWs: async function () {
+    async initWs() {
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
       const url = `${protocol}://${window.location.host}/satspay/${this.charge.id}/ws`
       this.ws = new WebSocket(url)
@@ -75,7 +74,10 @@ window.app = Vue.createApp({
       })
     }
   },
-  created: async function () {
+  async created() {
+    if (!this.charge.onchainaddress) {
+      this.tab = 'ln'
+    }
     // add custom-css to make overrides easier
     if (this.charge.custom_css) {
       document.body.setAttribute('id', 'custom-css')

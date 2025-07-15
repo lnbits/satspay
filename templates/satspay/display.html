@@ -3,13 +3,12 @@
   <div class="col-lg-4 col-md-6 col-sm-8 col-xs-10">
     <q-card>
       <q-card-section class="text-center">
-        <div class="text-h4">${charge.name || 'LNbits SatsPay'}</div>
+        <div class="text-h4" v-text="charge.name || 'LNbits SatsPay'"></div>
         <div
           class="text-subtitle1"
           v-for="line in charge.description.split('\n')"
-        >
-          ${line}
-        </div>
+          v-text="line"
+        ></div>
       </q-card-section>
       <satspay-time-elapsed :charge="charge"></satspay-time-elapsed>
       <q-card-section>
@@ -19,8 +18,8 @@
             <span
               class="text-uppercase text-secondary cursor-pointer"
               @click="copyText(charge.id)"
-              >${charge.id}</span
-            >
+              v-text="charge.id"
+            ></span>
           </q-item-label>
           <q-item dense>
             <q-item-section>
@@ -56,7 +55,8 @@
 
             <q-item-section side>
               <q-badge color="gray">
-                <span class="text-subtitle2">${charge.pending} sats</span>
+                <span class="text-subtitle2" v-text="charge.pending"></span>
+                <span>&nbsp;sats</span>
               </q-badge>
             </q-item-section>
           </q-item>
@@ -68,10 +68,11 @@
 
             <q-item-section side>
               <q-badge color="green">
-                <span class="text-subtitle2"
-                  >${charge.amount - charge.balance > 0 ? charge.amount -
-                  charge.balance : 0} sats</span
-                >
+                <span
+                  class="text-subtitle2"
+                  v-text="charge.amount - charge.balance > 0 ? charge.amount - charge.balance : 0"
+                ></span>
+                <span>&nbsp;sats</span>
               </q-badge>
             </q-item-section>
           </q-item>
