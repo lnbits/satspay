@@ -1,29 +1,67 @@
-# SatsPay Server - <small>[LNbits](https://github.com/lnbits/lnbits) extension</small>
+<a href="https://lnbits.com" target="_blank" rel="noopener noreferrer">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://i.imgur.com/QE6SIrs.png">
+    <img src="https://i.imgur.com/fyKPgVT.png" alt="LNbits" style="width:280px">
+  </picture>
+</a>
 
-<small>For more about LNBits extension check [this tutorial](https://github.com/lnbits/lnbits/wiki/LNbits-Extensions)</small>
+[![License: MIT](https://img.shields.io/badge/License-MIT-success?logo=open-source-initiative&logoColor=white)](./LICENSE)
+[![Built for LNbits](https://img.shields.io/badge/Built%20for-LNbits-4D4DFF?logo=lightning&logoColor=white)](https://github.com/lnbits/lnbits)
 
-## Create onchain and LN charges. Includes webhooks!
+# SatsPay Server - [LNbits](https://lnbits.com) extension
 
-Easily create invoices that support Lightning Network and on-chain BTC payment.
+Create payment pages that accept both Lightning and on-chain Bitcoin. Includes webhook support for integrating payments into your applications.
 
-1. Create a "NEW CHARGE"\
+## How it works
+
+Create charges with customizable amounts, expiry times, and payment options. Share the payment page with your customer. When paid, webhooks notify your backend and the user can be redirected to a success page.
+
+## Features
+
+- Lightning and on-chain payment support
+- Configurable invoice expiry
+- Webhook notifications on payment
+- Custom redirect URLs after payment
+- Payment status tracking
+- BIP21 Support
+
+## Usage
+
+1. Create a new charge
+
    ![new charge](https://i.imgur.com/fUl6p74.png)
+
 2. Fill out the invoice fields
-   - set a description for the payment
-   - the amount in sats
-   - the time, in minutes, the invoice is valid for, after this period the invoice can't be paid
-   - set a webhook that will get the transaction details after a successful payment
-   - set to where the user should redirect after payment
-   - set the text for the button that will show after payment (not setting this, will display "NONE" in the button)
-   - select if you want on-chain payment, LN payment or both
-   - depending on what you select you'll have to choose the respective wallets where to receive your payment\
-     ![charge form](https://i.imgur.com/F10yRiW.png)
-3. The charge will appear on the _Charges_ section\
+   - Description for the payment
+   - Amount in sats
+   - Expiry time in minutes
+   - Webhook URL for payment notifications
+   - Redirect URL after successful payment
+   - Button text for the success page
+   - Select payment methods (on-chain, Lightning, or both)
+   - Choose the receiving wallets
+
+   ![charge form](https://i.imgur.com/F10yRiW.png)
+
+3. The charge appears in the Charges section
+
    ![charges](https://i.imgur.com/zqHpVxc.png)
-4. Your customer/payee will get the payment page
-   - they can choose to pay on LN\
-     ![offchain payment](https://i.imgur.com/4191SMV.png)
-   - or pay on-chain\
-     ![onchain payment](https://i.imgur.com/wzLRR5N.png)
-5. You can check the state of your charges in LNbits\
+
+4. Your customer sees the payment page and can choose Lightning
+
+   ![offchain payment](https://i.imgur.com/4191SMV.png)
+
+   Or on-chain
+
+   ![onchain payment](https://i.imgur.com/wzLRR5N.png)
+
+5. Track payment status in LNbits
+
    ![invoice state](https://i.imgur.com/JnBd22p.png)
+
+## Powered by LNbits
+
+[LNbits](https://lnbits.com) is a free and open-source lightning accounts system.
+
+[![Visit LNbits Shop](https://img.shields.io/badge/Visit-LNbits%20Shop-7C3AED?logo=shopping-cart&logoColor=white&labelColor=5B21B6)](https://shop.lnbits.com/)
+[![Try myLNbits SaaS](https://img.shields.io/badge/Try-myLNbits%20SaaS-2563EB?logo=lightning&logoColor=white&labelColor=1E40AF)](https://my.lnbits.com/login)

@@ -1,6 +1,10 @@
 {
+  "id": "satspay",
+  "version": "1.0.1",
   "name": "SatsPay Server",
+  "repo": "https://github.com/lnbits/satspay",
   "short_description": "Create onchain and LN charges",
+  "description": "",
   "tile": "/satspay/static/image/satspay.png",
   "min_lnbits_version": "1.0.0",
   "contributors": [
@@ -27,7 +31,7 @@
   ],
   "images": [
     {
-      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/1.jpg",
+      "uri": "https://raw.githubusercontent.com/lnbits/satspay/main/static/image/SatsPay_thumbnail.png",
       "link": "https://www.youtube.com/embed/p0QZe9yO64Y?si=FErZuA1bC78II7JE"
     },
     {
@@ -48,5 +52,9 @@
   ],
   "description_md": "https://raw.githubusercontent.com/lnbits/satspay/main/description.md",
   "terms_and_conditions_md": "https://raw.githubusercontent.com/lnbits/satspay/main/toc.md",
-  "license": "MIT"
+  "license": "MIT",
+  "paid_features": "",
+  "tags": ["Merchant", "Payments", "BIP21"],
+  "donate": "",
+  "hidden": false
 }
