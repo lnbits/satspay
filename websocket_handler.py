@@ -4,7 +4,7 @@ import json
 from lnbits.settings import settings
 from lnbits.tasks import create_permanent_unique_task
 from loguru import logger
-from websockets.client import connect
+from websockets.asyncio.client import connect
 
 from .crud import get_or_create_satspay_settings
 
