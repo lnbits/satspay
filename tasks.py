@@ -79,11 +79,12 @@ async def on_invoice_paid(payment: Payment) -> None:
         charge.paid = True
         logger.success(f"Charge {charge.id} invoice paid.")
         charge.add_extra({"payment_method": "lightning"})
+        charge = await update_charge(charge)
         await send_success_websocket(charge)
         if charge.webhook:
             resp = await call_webhook(charge)
             charge.add_extra(resp)
-        await update_charge(charge)
+            await update_charge(charge)
 
 
 def start_onchain_listener(address: str):
@@ -124,12 +125,13 @@ async def _handle_ws_message(address: str, data: dict):
     charge.balance = confirmed_balance
     charge.pending = unconfirmed_balance
     charge.paid = charge.balance >= charge.amount
-    await send_success_websocket(charge)
     if charge.paid:
         charge.add_extra({"payment_method": "onchain"})
         logger.success(f"Charge {charge.id} onchain paid.")
         stop_onchain_listener(address)
+    charge = await update_charge(charge)
+    await send_success_websocket(charge)
     if charge.webhook:
         resp = await call_webhook(charge)
         charge.add_extra(resp)
-    await update_charge(charge)
+        await update_charge(charge)

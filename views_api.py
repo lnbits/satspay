@@ -171,8 +171,12 @@ async def api_charge_webhook(charge_id: str) -> Charge:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST, detail="No webhook set."
         )
+    # update payment status
+    charge = await update_charge(charge)
+
     resp = await call_webhook(charge)
     charge.add_extra(resp)
+    # update webhook status
     charge = await update_charge(charge)
     return charge
 
