@@ -12,6 +12,7 @@ dev = [
     "black",
     "pytest-asyncio",
     "pytest",
+    "pytest-md",
     "mypy",
     "pre-commit",
     "ruff",
