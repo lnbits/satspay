@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Optional
 
 from fastapi.param_functions import Query
 from pydantic import BaseModel
@@ -23,13 +22,13 @@ class CreateCharge(BaseModel):
     completelink: str = Query(None)
     completelinktext: str = Query("Back to Merchant")
     time: int = Query(..., ge=1)
-    amount: Optional[int] = Query(None, ge=1)
+    amount: int | None = Query(None, ge=1)
     zeroconf: bool = Query(False)
     fasttrack: bool = Query(False)
-    custom_css: Optional[str] = Query(None)
+    custom_css: str | None = Query(None)
     currency: str = Query(None)
-    currency_amount: Optional[float] = Query(None)
-    extra: Optional[str] = Query(None)
+    currency_amount: float | None = Query(None)
+    extra: str | None = Query(None)
 
 
 class Charge(BaseModel):
@@ -43,20 +42,20 @@ class Charge(BaseModel):
     zeroconf: bool = False
     fasttrack: bool = False
     paid: bool = False
-    completelinktext: Optional[str] = "Back to Merchant"
-    name: Optional[str] = None
-    description: Optional[str] = None
-    onchainwallet: Optional[str] = None
-    onchainaddress: Optional[str] = None
-    lnbitswallet: Optional[str] = None
-    payment_request: Optional[str] = None
-    payment_hash: Optional[str] = None
-    webhook: Optional[str] = None
-    completelink: Optional[str] = None
-    custom_css: Optional[str] = None
-    currency: Optional[str] = None
-    currency_amount: Optional[float] = None
-    extra: Optional[str] = None
+    completelinktext: str | None = "Back to Merchant"
+    name: str | None = None
+    description: str | None = None
+    onchainwallet: str | None = None
+    onchainaddress: str | None = None
+    lnbitswallet: str | None = None
+    payment_request: str | None = None
+    payment_hash: str | None = None
+    webhook: str | None = None
+    completelink: str | None = None
+    custom_css: str | None = None
+    currency: str | None = None
+    currency_amount: float | None = None
+    extra: str | None = None
 
     def add_extra(self, extra: dict):
         old_extra = json.loads(self.extra) if self.extra else {}
@@ -67,7 +66,7 @@ class Charge(BaseModel):
         """
         ignore the pending status if fasttrack is enabled tell the frontend its paid
         """
-        return (self.pending or 0) >= self.amount and self.fasttrack or self.paid
+        return ((self.pending or 0) >= self.amount and self.fasttrack) or self.paid
 
     @property
     def public(self):

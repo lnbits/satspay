@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from lnbits.core.services import create_invoice
 from lnbits.db import Database
@@ -19,7 +18,7 @@ db = Database("ext_satspay")
 async def create_charge(
     user: str,
     data: CreateCharge,
-    onchainaddress: Optional[str] = None,
+    onchainaddress: str | None = None,
 ) -> Charge:
     if not data.amount or data.amount <= 0:
         raise Exception("Amount must be greater than 0")
@@ -74,7 +73,7 @@ async def update_charge(charge: Charge) -> Charge:
     return charge
 
 
-async def get_charge(charge_id: str) -> Optional[Charge]:
+async def get_charge(charge_id: str) -> Charge | None:
     return await db.fetchone(
         "SELECT * FROM satspay.charges WHERE id = :id",
         {"id": charge_id},
@@ -89,7 +88,7 @@ async def get_pending_charges() -> list[Charge]:
     )
 
 
-async def get_charge_by_onchain_address(onchain_address: str) -> Optional[Charge]:
+async def get_charge_by_onchain_address(onchain_address: str) -> Charge | None:
     return await db.fetchone(
         "SELECT * FROM satspay.charges WHERE onchainaddress = :address",
         {"address": onchain_address},
@@ -127,7 +126,7 @@ async def update_theme(theme: SatsPayTheme) -> SatsPayTheme:
     return theme
 
 
-async def get_theme(css_id: str) -> Optional[SatsPayTheme]:
+async def get_theme(css_id: str) -> SatsPayTheme | None:
     return await db.fetchone(
         "SELECT * FROM satspay.themes WHERE css_id = :css_id",
         {"css_id": css_id},

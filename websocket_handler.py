@@ -1,6 +1,5 @@
 import asyncio
 import json
-from typing import Optional
 
 from lnbits.settings import settings
 from lnbits.tasks import create_permanent_unique_task
@@ -12,7 +11,7 @@ from .crud import get_or_create_satspay_settings
 ws_receive_queue: asyncio.Queue[dict] = asyncio.Queue()
 ws_send_queue: asyncio.Queue[dict] = asyncio.Queue()
 
-websocket_task: Optional[asyncio.Task] = None
+websocket_task: asyncio.Task | None = None
 
 
 def restart_websocket_task():

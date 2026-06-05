@@ -36,13 +36,11 @@ async def m002_add_charge_extra_data(db: Database):
     """
     Add 'extra' column for storing various config about the charge (JSON format)
     """
-    await db.execute(
-        """
+    await db.execute("""
         ALTER TABLE satspay.charges
         ADD COLUMN extra TEXT DEFAULT
         '{"mempool_endpoint": "https://mempool.space", "network": "Mainnet"}'
-        """
-    )
+        """)
 
 
 async def m003_add_themes_table(db: Database):
@@ -50,16 +48,14 @@ async def m003_add_themes_table(db: Database):
     Themes table
     """
 
-    await db.execute(
-        """
+    await db.execute("""
         CREATE TABLE satspay.themes (
             css_id TEXT NOT NULL PRIMARY KEY,
             "user" TEXT,
             title TEXT,
             custom_css TEXT
         );
-    """
-    )
+    """)
 
 
 async def m004_add_custom_css_to_charges(db: Database):
@@ -84,18 +80,14 @@ async def m006_add_zeroconf_column(db: Database):
     Add 'zeroconf' column for allowing zero confirmation payments
     """
     try:
-        await db.execute(
-            """
+        await db.execute("""
         ALTER TABLE satspay.charges ADD COLUMN zeroconf BOOLEAN NOT NULL DEFAULT FALSE
-        """
-        )
+        """)
 
-        await db.execute(
-            """
+        await db.execute("""
             UPDATE satspay.charges
             SET zeroconf = FALSE
-            """
-        )
+            """)
     except OperationalError:
         pass
 
@@ -105,19 +97,15 @@ async def m007_add_pending_column(db: Database):
     Add 'pending' column for storing the pending amount
     """
     try:
-        await db.execute(
-            f"""
+        await db.execute(f"""
             ALTER TABLE satspay.charges
             ADD COLUMN pending {db.big_int} NOT NULL DEFAULT 0
-        """
-        )
+        """)
 
-        await db.execute(
-            """
+        await db.execute("""
             UPDATE satspay.charges
             SET pending = 0
-            """
-        )
+            """)
     except OperationalError:
         pass
 
@@ -137,13 +125,11 @@ async def m009_settings(db: Database):
     Add settings table
     """
     try:
-        await db.execute(
-            """
+        await db.execute("""
             CREATE TABLE satspay.settings (
                 mempool_url TEXT NOT NULL
             )
-        """
-        )
+        """)
     except OperationalError:
         pass
 
@@ -167,13 +153,11 @@ async def m011_persist_paid(db: Database):
         await db.execute(
             "ALTER TABLE satspay.charges ADD COLUMN paid BOOLEAN DEFAULT FALSE"
         )
-        await db.execute(
-            """
+        await db.execute("""
             UPDATE satspay.charges
             SET paid = TRUE
             WHERE balance >= amount
-            """
-        )
+            """)
     except OperationalError:
         pass
 
