@@ -72,7 +72,11 @@
                 <q-badge color="green">
                   <span
                     class="text-subtitle2"
-                    v-text="charge.amount - charge.balance > 0 ? charge.amount - charge.balance : 0"
+                    v-text="
+                      charge.amount - charge.balance > 0
+                        ? charge.amount - charge.balance
+                        : 0
+                    "
                   ></span>
                   <span>&nbsp;sats</span>
                 </q-badge>

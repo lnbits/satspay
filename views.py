@@ -1,6 +1,13 @@
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from lnbits.core.views.generic import index, index_public
 from lnbits.decorators import check_user_exists
 from lnbits.settings import settings

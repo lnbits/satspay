@@ -3,7 +3,10 @@
     <div class="col-12 col-md-7 q-gutter-y-md">
       <q-card>
         <q-card-section>
-          <q-btn unelevated color="primary" @click="formDialogCharge.show = true"
+          <q-btn
+            unelevated
+            color="primary"
+            @click="formDialogCharge.show = true"
             >New charge
           </q-btn>
 
@@ -108,7 +111,10 @@
 
                 <q-td auto-width>
                   <q-badge
-                    v-if="props.row.time_elapsed && props.row.balance < props.row.amount"
+                    v-if="
+                      props.row.time_elapsed &&
+                      props.row.balance < props.row.amount
+                    "
                     outline
                     color="primary"
                   >
@@ -181,7 +187,9 @@
                   <div v-text="props.row.balance"></div>
                 </q-td>
                 <q-td key="pending" :props="props">
-                  <div v-text="props.row.pending ? props.row.pending : ''"></div>
+                  <div
+                    v-text="props.row.pending ? props.row.pending : ''"
+                  ></div>
                 </q-td>
                 <q-td key="onchain address" :props="props">
                   <a
@@ -214,7 +222,9 @@
                     </div>
 
                     <div
-                      v-if="props.row.completelink || props.row.completelinktext"
+                      v-if="
+                        props.row.completelink || props.row.completelinktext
+                      "
                     >
                       Completed Link:
                       <a
@@ -222,7 +232,9 @@
                         :href="props.row.completelink"
                         target="_blank"
                         style="color: unset; text-decoration: none"
-                        v-text="props.row.completelinktext || props.row.completelink"
+                        v-text="
+                          props.row.completelinktext || props.row.completelink
+                        "
                       ></a>
                     </div>
                     <div v-if="props.row.webhook">
@@ -238,8 +250,14 @@
                     <div v-if="props.row.webhook">
                       Webhook Response:
                       <q-badge
-                        v-if="props.row.extra && props.row.extra.webhook_message"
-                        @click="showWebhookResponseDialog(props.row.extra.webhook_response)"
+                        v-if="
+                          props.row.extra && props.row.extra.webhook_message
+                        "
+                        @click="
+                          showWebhookResponseDialog(
+                            props.row.extra.webhook_response
+                          )
+                        "
                         color="blue"
                         class="cursor-pointer"
                       >
@@ -359,8 +377,7 @@
                 <p>
                   SatsPayServer, create Onchain/LN charges.<br />WARNING: If
                   using with the WatchOnly extension, we highly recommend using
-                  a fresh extended public Key specifically for
-                  SatsPayServer!<br />
+                  a fresh extended public Key specifically for SatsPayServer!<br />
                   <small>
                     Created by,
                     <a class="text-secondary" href="https://github.com/benarc"
@@ -375,10 +392,7 @@
                   >
                 </p>
                 <br />
-                <a
-                  class="text-secondary"
-                  target="_blank"
-                  href="/docs#/satspay"
+                <a class="text-secondary" target="_blank" href="/docs#/satspay"
                   >Swagger REST API Documentation</a
                 >
               </q-card-section>
@@ -508,11 +522,7 @@
                 </q-item-label>
               </q-item-section>
             </q-item>
-            <q-item
-              tag="label"
-              v-ripple
-              v-if="!formDialogCharge.data.zeroconf"
-            >
+            <q-item tag="label" v-ripple v-if="!formDialogCharge.data.zeroconf">
               <q-item-section avatar top>
                 <q-checkbox v-model="formDialogCharge.data.fasttrack" />
               </q-item-section>

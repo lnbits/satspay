@@ -43,7 +43,10 @@ window.PageSatspay = {
       return `/satspay/api/v1/settings?usr=${this.g.user.id}`
     },
     currencies() {
-      return ['satoshis', ...(this.g.allowedCurrencies || this.g.currencies || [])]
+      return [
+        'satoshis',
+        ...(this.g.allowedCurrencies || this.g.currencies || [])
+      ]
     }
   },
   data() {
@@ -83,11 +86,31 @@ window.PageSatspay = {
         columns: [
           {name: 'theId', align: 'left', label: 'ID', field: 'id'},
           {name: 'name', align: 'left', label: 'Name', field: 'name'},
-          {name: 'timeLeft', align: 'left', label: 'Time left', field: 'timeLeft'},
-          {name: 'time to pay', align: 'left', label: 'Time to Pay', field: 'time'},
-          {name: 'amount', align: 'left', label: 'Amount to pay', field: 'amount'},
+          {
+            name: 'timeLeft',
+            align: 'left',
+            label: 'Time left',
+            field: 'timeLeft'
+          },
+          {
+            name: 'time to pay',
+            align: 'left',
+            label: 'Time to Pay',
+            field: 'time'
+          },
+          {
+            name: 'amount',
+            align: 'left',
+            label: 'Amount to pay',
+            field: 'amount'
+          },
           {name: 'balance', align: 'left', label: 'Balance', field: 'balance'},
-          {name: 'pending', align: 'left', label: 'Pending Balance', field: 'pending'},
+          {
+            name: 'pending',
+            align: 'left',
+            label: 'Pending Balance',
+            field: 'pending'
+          },
           {
             name: 'onchain address',
             align: 'left',
@@ -199,7 +222,10 @@ window.PageSatspay = {
           this.g.user.wallets[0].adminkey
         )
         this.chargeLinks = data.map(c =>
-          mapCharge(c, this.chargeLinks.find(old => old.id === c.id))
+          mapCharge(
+            c,
+            this.chargeLinks.find(old => old.id === c.id)
+          )
         )
       } catch (error) {
         LNbits.utils.notifyApiError(error)
@@ -213,7 +239,10 @@ window.PageSatspay = {
           this.g.user.wallets[0].adminkey
         )
         this.themeLinks = data.map(c =>
-          mapCSS(c, this.themeLinks.find(old => old.css_id === c.css_id))
+          mapCSS(
+            c,
+            this.themeLinks.find(old => old.css_id === c.css_id)
+          )
         )
         this.themeOptions = data.map(w => ({
           id: w.css_id,
@@ -256,7 +285,10 @@ window.PageSatspay = {
             wallet,
             data
           )
-          this.themeLinks = _.reject(this.themeLinks, obj => obj.css_id === data.css_id)
+          this.themeLinks = _.reject(
+            this.themeLinks,
+            obj => obj.css_id === data.css_id
+          )
           this.themeLinks.unshift(mapCSS(resp.data))
         } else {
           const resp = await LNbits.api.request(
@@ -284,7 +316,10 @@ window.PageSatspay = {
               `/satspay/api/v1/themes/${themeId}`,
               this.g.user.wallets[0].adminkey
             )
-            this.themeLinks = _.reject(this.themeLinks, obj => obj.css_id === themeId)
+            this.themeLinks = _.reject(
+              this.themeLinks,
+              obj => obj.css_id === themeId
+            )
           } catch (error) {
             LNbits.utils.notifyApiError(error)
           }
@@ -323,7 +358,10 @@ window.PageSatspay = {
               `/satspay/api/v1/charge/${chargeId}`,
               this.g.user.wallets[0].adminkey
             )
-            this.chargeLinks = _.reject(this.chargeLinks, obj => obj.id === chargeId)
+            this.chargeLinks = _.reject(
+              this.chargeLinks,
+              obj => obj.id === chargeId
+            )
           } catch (error) {
             LNbits.utils.notifyApiError(error)
           }
@@ -360,7 +398,10 @@ window.PageSatspay = {
           if (charge.paid) {
             this.$q.notify({message: 'Charge paid', color: 'positive'})
           } else {
-            this.$q.notify({message: 'Charge still pending...', color: 'negative'})
+            this.$q.notify({
+              message: 'Charge still pending...',
+              color: 'negative'
+            })
           }
         })
         .catch(err => {
@@ -372,7 +413,11 @@ window.PageSatspay = {
       this.showWebhookResponse = true
     },
     exportchargeCSV() {
-      LNbits.utils.exportCSV(this.chargesTable.columns, this.chargeLinks, 'charges')
+      LNbits.utils.exportCSV(
+        this.chargesTable.columns,
+        this.chargeLinks,
+        'charges'
+      )
     },
     updateFiatRate(currency) {
       LNbits.api
@@ -387,7 +432,10 @@ window.PageSatspay = {
   },
   async created() {
     try {
-      const {data} = await LNbits.api.request('GET', '/satspay/api/v1/settings/public')
+      const {data} = await LNbits.api.request(
+        'GET',
+        '/satspay/api/v1/settings/public'
+      )
       this.network = data.network
     } catch (e) {}
     if (this.g.user.admin) {
