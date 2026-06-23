@@ -196,6 +196,26 @@ async def api_charge_delete(charge_id: str):
     await delete_charge(charge_id)
 
 
+@satspay_api_router.get("/api/v1/settings/public")
+async def api_get_public_settings() -> dict:
+    satspay_settings = await get_or_create_satspay_settings()
+    return {
+        "network": satspay_settings.network,
+        "mempool_url": satspay_settings.mempool_url,
+    }
+
+
+@satspay_api_router.get("/api/v1/charge/public/{charge_id}")
+async def api_get_charge_public(charge_id: str) -> dict:
+    charge = await get_charge(charge_id)
+    if not charge:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
+        )
+    satspay_settings = await get_or_create_satspay_settings()
+    return {**charge.public, "mempool_url": satspay_settings.mempool_url}
+
+
 @satspay_api_router.get("/api/v1/settings", dependencies=[Depends(check_admin)])
 async def api_get_or_create_settings() -> SatspaySettings:
     return await get_or_create_satspay_settings()
