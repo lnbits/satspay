@@ -32,6 +32,7 @@ Create charges with customizable amounts, expiry times, and payment options. Sha
    ![new charge](https://i.imgur.com/fUl6p74.png)
 
 2. Fill out the invoice fields
+
    - Description for the payment
    - Amount in sats
    - Expiry time in minutes
