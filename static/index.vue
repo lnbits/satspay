@@ -188,7 +188,9 @@
                   <div v-text="props.row.balance"></div>
                 </q-td>
                 <q-td key="pending" :props="props">
-                  <div v-text="props.row.pending ? props.row.pending : ''"></div>
+                  <div
+                    v-text="props.row.pending ? props.row.pending : ''"
+                  ></div>
                 </q-td>
                 <q-td key="onchain address" :props="props">
                   <a
@@ -527,7 +529,9 @@
               v-if="!formDialogCharge.data.fasttrack"
             >
               <q-item-section avatar top>
-                <q-checkbox v-model="formDialogCharge.data.zeroconf"></q-checkbox>
+                <q-checkbox
+                  v-model="formDialogCharge.data.zeroconf"
+                ></q-checkbox>
               </q-item-section>
               <q-item-section>
                 <q-item-label
@@ -539,13 +543,11 @@
                 ></q-item-label>
               </q-item-section>
             </q-item>
-            <q-item
-              tag="label"
-              v-ripple
-              v-if="!formDialogCharge.data.zeroconf"
-            >
+            <q-item tag="label" v-ripple v-if="!formDialogCharge.data.zeroconf">
               <q-item-section avatar top>
-                <q-checkbox v-model="formDialogCharge.data.fasttrack"></q-checkbox>
+                <q-checkbox
+                  v-model="formDialogCharge.data.fasttrack"
+                ></q-checkbox>
               </q-item-section>
               <q-item-section>
                 <q-item-label
