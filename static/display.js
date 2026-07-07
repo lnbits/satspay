@@ -51,11 +51,16 @@ if (window.app) {
             type="a"
             :href="charge.completelink"
             :label="charge.completelinktext"
-            ><template v-slot:loading> {{charge.completelinktext}} </template></q-btn
           >
-          <p v-if="charge.completelink" class="q-pt-md">
-            Redirecting after 5 seconds
-          </p>
+            <template v-slot:loading>
+              <span v-text="charge.completelinktext"></span>
+            </template>
+          </q-btn>
+          <p
+            v-if="charge.completelink"
+            class="q-pt-md"
+            v-text="$t('satspay.redirecting')"
+          ></p>
         </div>
       </div>
     </div>`
@@ -68,13 +73,21 @@ if (window.app) {
     <div>
       <div class="row justify-center q-mb-sm">
         <div class="col text-center">
-          <span v-if="type == 'btc'" class="text-subtitle2">Send
-            <strong>
-            <span v-text="chargeAmountBtc"></span> BTC
-            </strong>
-             to this onchain address</span>
-          <span v-if="type == 'ln'" class="text-subtitle2">Pay this lightning-network invoice:</span>
-          <span v-if="type == 'uqr'" class="text-subtitle2">Scan QR with a wallet supporting BIP21:</span>
+          <span v-if="type == 'btc'" class="text-subtitle2">
+            Send
+            <strong><span v-text="chargeAmountBtc"></span> BTC</strong>
+            <span v-text="$t('satspay.send_btc_to_address')"></span>
+          </span>
+          <span
+            v-if="type == 'ln'"
+            class="text-subtitle2"
+            v-text="$t('satspay.pay_ln_invoice')"
+          ></span>
+          <span
+            v-if="type == 'uqr'"
+            class="text-subtitle2"
+            v-text="$t('satspay.scan_uqr')"
+          ></span>
         </div>
       </div>
       <div class="row justify-center q-mb-sm">
@@ -88,7 +101,12 @@ if (window.app) {
       </div>
       <div class="row items-center q-mt-lg">
         <div class="col text-center">
-          <q-btn outline color="grey" @click="utils.copyText(value)">Copy address</q-btn>
+          <q-btn
+            outline
+            color="grey"
+            @click="utils.copyText(value)"
+            :label="$t('satspay.copy_address')"
+          ></q-btn>
         </div>
       </div>
     </div>`,
@@ -113,14 +131,20 @@ if (window.app) {
     <div class="text-center">
       <q-linear-progress size="30px" :value="progress" :color="barColor">
         <div class="absolute-full flex flex-center text-white text-subtitle2">
-          <span v-if="charge.paid">Payment received</span>
-          <span v-else-if="timeSeconds <= 0">Time elapsed</span>
+          <span
+            v-if="charge.paid"
+            v-text="$t('satspay.payment_received')"
+          ></span>
+          <span
+            v-else-if="timeSeconds <= 0"
+            v-text="$t('satspay.time_elapsed')"
+          ></span>
           <div v-else class="full-width">
             <span class="q-ml-md">
               <q-spinner size="1em" class="q-mr-xs"></q-spinner>
-              Awaiting payment...
+              <span v-text="$t('satspay.awaiting_payment')"></span>
             </span>
-            <span>{{timeLeft}}</span>
+            <span v-text="timeLeft"></span>
           </div>
         </div>
       </q-linear-progress>
@@ -227,7 +251,7 @@ window.PageSatspayPublic = {
           }
           this.$q.notify({
             type: 'positive',
-            message: 'Payment received',
+            message: this.$t('satspay.payment_received'),
             timeout: 10000
           })
         }
@@ -235,7 +259,7 @@ window.PageSatspayPublic = {
       this.ws.addEventListener('close', async () => {
         this.$q.notify({
           type: 'negative',
-          message: 'WebSocket connection closed. Retrying...',
+          message: this.$t('satspay.ws_reconnecting'),
           timeout: 1000
         })
         setTimeout(() => {

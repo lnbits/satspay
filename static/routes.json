@@ -3,12 +3,14 @@
     "path": "/satspay/",
     "name": "PageSatspay",
     "template": "/satspay/static/index.vue",
-    "component": "/satspay/static/index.js"
+    "component": "/satspay/static/index.js",
+    "i18n": "/satspay/static/i18n"
   },
   {
     "path": "/satspay/:charge_id",
     "name": "PageSatspayPublic",
     "template": "/satspay/static/display.vue",
-    "component": "/satspay/static/display.js"
+    "component": "/satspay/static/display.js",
+    "i18n": "/satspay/static/i18n"
   }
 ]

@@ -47,6 +47,92 @@ window.PageSatspay = {
         'satoshis',
         ...(this.g.allowedCurrencies || this.g.currencies || [])
       ]
+    },
+    chargesColumns() {
+      return [
+        {
+          name: 'theId',
+          align: 'left',
+          label: this.$t('satspay.col_id'),
+          field: 'id'
+        },
+        {
+          name: 'name',
+          align: 'left',
+          label: this.$t('satspay.col_name'),
+          field: 'name'
+        },
+        {
+          name: 'timeLeft',
+          align: 'left',
+          label: this.$t('satspay.col_time_left'),
+          field: 'timeLeft'
+        },
+        {
+          name: 'time to pay',
+          align: 'left',
+          label: this.$t('satspay.col_time_to_pay'),
+          field: 'time'
+        },
+        {
+          name: 'amount',
+          align: 'left',
+          label: this.$t('satspay.col_amount'),
+          field: 'amount'
+        },
+        {
+          name: 'balance',
+          align: 'left',
+          label: this.$t('satspay.col_balance'),
+          field: 'balance'
+        },
+        {
+          name: 'pending',
+          align: 'left',
+          label: this.$t('satspay.col_pending'),
+          field: 'pending'
+        },
+        {
+          name: 'onchain address',
+          align: 'left',
+          label: this.$t('satspay.col_onchain_address'),
+          field: 'onchainaddress'
+        },
+        {
+          name: 'LNbits wallet',
+          align: 'left',
+          label: this.$t('satspay.col_lnbits_wallet'),
+          field: 'lnbitswallet'
+        },
+        {
+          name: 'Webhook link',
+          align: 'left',
+          label: this.$t('satspay.col_webhook'),
+          field: 'webhook'
+        },
+        {
+          name: 'Paid link',
+          align: 'left',
+          label: this.$t('satspay.col_paid_link'),
+          field: 'completelink'
+        }
+      ]
+    },
+    customCSSColumns() {
+      return [
+        {
+          name: 'title',
+          align: 'left',
+          label: this.$t('satspay.col_css_title'),
+          field: 'title'
+        },
+        {
+          name: 'css_id',
+          align: 'left',
+          label: this.$t('satspay.col_css_id'),
+          field: 'css_id'
+        }
+      ]
     }
   },
   data() {
@@ -83,66 +169,9 @@ window.PageSatspay = {
       rescanning: false,
       showAdvanced: false,
       chargesTable: {
-        columns: [
-          {name: 'theId', align: 'left', label: 'ID', field: 'id'},
-          {name: 'name', align: 'left', label: 'Name', field: 'name'},
-          {
-            name: 'timeLeft',
-            align: 'left',
-            label: 'Time left',
-            field: 'timeLeft'
-          },
-          {
-            name: 'time to pay',
-            align: 'left',
-            label: 'Time to Pay',
-            field: 'time'
-          },
-          {
-            name: 'amount',
-            align: 'left',
-            label: 'Amount to pay',
-            field: 'amount'
-          },
-          {name: 'balance', align: 'left', label: 'Balance', field: 'balance'},
-          {
-            name: 'pending',
-            align: 'left',
-            label: 'Pending Balance',
-            field: 'pending'
-          },
-          {
-            name: 'onchain address',
-            align: 'left',
-            label: 'Onchain Address',
-            field: 'onchainaddress'
-          },
-          {
-            name: 'LNbits wallet',
-            align: 'left',
-            label: 'LNbits wallet',
-            field: 'lnbitswallet'
-          },
-          {
-            name: 'Webhook link',
-            align: 'left',
-            label: 'Webhook link',
-            field: 'webhook'
-          },
-          {
-            name: 'Paid link',
-            align: 'left',
-            label: 'Paid link',
-            field: 'completelink'
-          }
-        ],
         pagination: {rowsPerPage: 10}
       },
       customCSSTable: {
-        columns: [
-          {name: 'title', align: 'left', label: 'Title', field: 'title'},
-          {name: 'css_id', align: 'left', label: 'ID', field: 'css_id'}
-        ],
         pagination: {rowsPerPage: 10}
       },
       formDialogCharge: {
@@ -308,7 +337,7 @@ window.PageSatspay = {
 
     deleteTheme(themeId) {
       LNbits.utils
-        .confirmDialog('Are you sure you want to delete this theme?')
+        .confirmDialog(this.$t('satspay.delete_theme_confirm'))
         .onOk(async () => {
           try {
             await LNbits.api.request(
@@ -350,7 +379,7 @@ window.PageSatspay = {
     },
     deleteChargeLink(chargeId) {
       LNbits.utils
-        .confirmDialog('Are you sure you want to delete this pay link?')
+        .confirmDialog(this.$t('satspay.delete_charge_confirm'))
         .onOk(async () => {
           try {
             await LNbits.api.request(
@@ -375,7 +404,10 @@ window.PageSatspay = {
           this.g.user.wallets[0].adminkey
         )
         .then(() => {
-          this.$q.notify({message: 'Webhook sent', color: 'positive'})
+          this.$q.notify({
+            message: this.$t('satspay.webhook_sent'),
+            color: 'positive'
+          })
         })
         .catch(err => {
           LNbits.utils.notifyApiError(err)
@@ -396,10 +428,13 @@ window.PageSatspay = {
           const index = this.chargeLinks.findIndex(c => c.id === chargeId)
           this.chargeLinks[index] = mapCharge(charge, this.chargeLinks[index])
           if (charge.paid) {
-            this.$q.notify({message: 'Charge paid', color: 'positive'})
+            this.$q.notify({
+              message: this.$t('satspay.charge_paid'),
+              color: 'positive'
+            })
           } else {
             this.$q.notify({
-              message: 'Charge still pending...',
+              message: this.$t('satspay.charge_pending'),
               color: 'negative'
             })
           }
@@ -413,15 +448,11 @@ window.PageSatspay = {
       this.showWebhookResponse = true
     },
     exportchargeCSV() {
-      LNbits.utils.exportCSV(
-        this.chargesTable.columns,
-        this.chargeLinks,
-        'charges'
-      )
+      LNbits.utils.exportCSV(this.chargesColumns, this.chargeLinks, 'charges')
     },
     updateFiatRate(currency) {
       LNbits.api
-        .request('GET', '/lnurlp/api/v1/rate/' + currency, null)
+        .request('GET', '/api/v1/rate/' + currency, null)
         .then(response => {
           let rates = _.clone(this.fiatRates)
           rates[currency] = response.data.rate

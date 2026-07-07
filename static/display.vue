@@ -13,11 +13,13 @@
             v-text="line"
           ></div>
         </q-card-section>
+
         <satspay-time-elapsed :charge="charge"></satspay-time-elapsed>
+
         <q-card-section>
           <q-list>
-            <q-item-label header
-              >Charge ID:
+            <q-item-label header>
+              <span v-text="$t('satspay.charge_id')"></span>:
               <span
                 class="text-uppercase text-secondary cursor-pointer"
                 @click="utils.copyText(charge.id)"
@@ -26,64 +28,75 @@
             </q-item-label>
             <q-item dense>
               <q-item-section>
-                <q-item-label>Total to pay:</q-item-label>
+                <q-item-label>
+                  <span v-text="$t('satspay.total_to_pay')"></span>:
+                </q-item-label>
               </q-item-section>
-
               <q-item-section side>
                 <q-badge color="blue">
-                  <span v-text="charge.amount" class="text-subtitle2"></span>
-                  <span>&nbsp;sats</span>
+                  <span
+                    class="text-subtitle2"
+                    v-text="utils.formatBalance(charge.amount, g.denomination)"
+                  ></span>
                 </q-badge>
               </q-item-section>
             </q-item>
             <q-separator spaced></q-separator>
             <q-item dense>
               <q-item-section>
-                <q-item-label>Amount paid:</q-item-label>
+                <q-item-label>
+                  <span v-text="$t('satspay.amount_paid')"></span>:
+                </q-item-label>
               </q-item-section>
-
               <q-item-section side>
                 <q-badge color="orange">
-                  <span v-text="charge.balance" class="text-subtitle2"></span>
-                  <span>&nbsp;sats</span>
+                  <span
+                    class="text-subtitle2"
+                    v-text="utils.formatBalance(charge.balance, g.denomination)"
+                  ></span>
                 </q-badge>
               </q-item-section>
             </q-item>
             <q-separator spaced v-if="charge.pending"></q-separator>
             <q-item v-if="charge.pending" dense>
               <q-item-section>
-                <q-item-label>Amount pending:</q-item-label>
+                <q-item-label>
+                  <span v-text="$t('satspay.amount_pending')"></span>:
+                </q-item-label>
               </q-item-section>
-
               <q-item-section side>
                 <q-badge color="gray">
-                  <span class="text-subtitle2" v-text="charge.pending"></span>
-                  <span>&nbsp;sats</span>
+                  <span
+                    class="text-subtitle2"
+                    v-text="utils.formatBalance(charge.pending, g.denomination)"
+                  ></span>
                 </q-badge>
               </q-item-section>
             </q-item>
             <q-separator spaced></q-separator>
             <q-item dense>
               <q-item-section>
-                <q-item-label>Amount due:</q-item-label>
+                <q-item-label>
+                  <span v-text="$t('satspay.amount_due')"></span>:
+                </q-item-label>
               </q-item-section>
-
               <q-item-section side>
                 <q-badge color="green">
                   <span
                     class="text-subtitle2"
                     v-text="
-                      charge.amount - charge.balance > 0
-                        ? charge.amount - charge.balance
-                        : 0
+                      utils.formatBalance(
+                        Math.max(0, charge.amount - charge.balance),
+                        g.denomination
+                      )
                     "
                   ></span>
-                  <span>&nbsp;sats</span>
                 </q-badge>
               </q-item-section>
             </q-item>
           </q-list>
         </q-card-section>
+
         <q-card-section v-if="hasEnded">
           <q-separator></q-separator>
           <div class="row justify-center q-mt-sm">
@@ -102,6 +115,7 @@
             </div>
           </div>
         </q-card-section>
+
         <q-card-section v-else>
           <q-tabs
             v-model="tab"
@@ -117,22 +131,21 @@
               v-if="charge.onchainaddress"
               name="uqr"
               icon="qr_code"
-              label="UQR (BIP21)"
+              :label="$t('satspay.uqr_tab')"
             ></q-tab>
             <q-tab
               v-if="charge.payment_request"
               name="ln"
               icon="bolt"
-              label="Lightning"
+              :label="$t('satspay.ln_tab')"
             ></q-tab>
             <q-tab
               v-if="charge.onchainaddress"
               name="btc"
               icon="link"
-              label="Onchain"
+              :label="$t('satspay.btc_tab')"
             ></q-tab>
           </q-tabs>
-
           <q-separator></q-separator>
           <q-tab-panels v-model="tab" animated style="background: none">
             <q-tab-panel name="uqr">
@@ -147,7 +160,6 @@
                 </div>
               </div>
             </q-tab-panel>
-
             <q-tab-panel name="ln" v-if="charge.payment_request">
               <div class="row justify-center q-mt-sm">
                 <div class="col-sm-10 col-md-8">
@@ -160,7 +172,6 @@
                 </div>
               </div>
             </q-tab-panel>
-
             <q-tab-panel name="btc">
               <div class="row justify-center">
                 <div class="col text-center">
@@ -169,7 +180,8 @@
                     style="color: unset"
                     :href="mempoolLink"
                     target="_blank"
-                    ><span
+                  >
+                    <span
                       class="text-subtitle1"
                       v-text="charge.onchainaddress"
                     ></span>
