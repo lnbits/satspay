@@ -28,8 +28,7 @@ from .helpers import (
     fetch_onchain_config_network,
 )
 from .models import Charge, CreateCharge, SatspaySettings
-from .tasks import start_onchain_listener, stop_onchain_listener
-from .websocket_handler import restart_websocket_task
+from .tasks import satspay_track_address, satspay_untrack_address
 
 satspay_api_router = APIRouter()
 
@@ -92,7 +91,7 @@ async def api_charge_create(
             new_address = await fetch_onchain_address(
                 data.onchainwallet, key_type.wallet.inkey
             )
-            start_onchain_listener(new_address)
+            satspay_track_address(new_address)
             return await create_charge(
                 user=key_type.wallet.user,
                 onchainaddress=new_address,
@@ -191,7 +190,7 @@ async def api_charge_delete(charge_id: str):
             status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
         )
     if charge.onchainaddress:
-        stop_onchain_listener(charge.onchainaddress)
+        satspay_untrack_address(charge.onchainaddress)
 
     await delete_charge(charge_id)
 
@@ -223,12 +222,9 @@ async def api_get_or_create_settings() -> SatspaySettings:
 
 @satspay_api_router.put("/api/v1/settings", dependencies=[Depends(check_admin)])
 async def api_update_settings(data: SatspaySettings) -> SatspaySettings:
-    settings = await update_satspay_settings(data)
-    restart_websocket_task()
-    return settings
+    return await update_satspay_settings(data)
 
 
 @satspay_api_router.delete("/api/v1/settings", dependencies=[Depends(check_admin)])
 async def api_delete_settings() -> None:
     await delete_satspay_settings()
-    restart_websocket_task()
