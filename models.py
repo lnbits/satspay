@@ -106,9 +106,3 @@ class SatsPayTheme(BaseModel):
     title: str
     custom_css: str
     user: str
-
-
-class OnchainBalance(BaseModel):
-    confirmed: int
-    unconfirmed: int
-    txids: list[str]
