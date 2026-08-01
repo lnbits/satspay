@@ -95,6 +95,8 @@ async def handle_fiat_webhook_event(
 
     matching_charge.balance = matching_charge.amount
     matching_charge.paid = True
+    matching_charge.settlement_method = provider
+    matching_charge.settlement_proof = checking_id
     matching_charge = await update_charge(matching_charge)
     await send_success_websocket(matching_charge)
     if matching_charge.webhook:
@@ -138,6 +140,8 @@ async def api_fiat_webhook(provider: str, request: Request) -> dict:
         if matching_charge and not matching_charge.paid:
             matching_charge.balance = matching_charge.amount
             matching_charge.paid = True
+            matching_charge.settlement_method = provider
+            matching_charge.settlement_proof = checking_id
             matching_charge = await update_charge(matching_charge)
             await send_success_websocket(matching_charge)
             if matching_charge.webhook:

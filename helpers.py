@@ -18,9 +18,18 @@ def _satspay_internal_host() -> str:
     return "127.0.0.1" if settings.host in ("0.0.0.0", "::") else settings.host
 
 
+def _charge_json(charge: Charge) -> tuple[str, dict]:
+    if hasattr(charge, "model_dump_json"):
+        s = charge.model_dump_json()
+    else:
+        s = charge.json()
+    return s, json.loads(s)
+
+
 async def call_webhook(charge: Charge):
     try:
         assert charge.webhook, "charge has no webhook"
+        charge_str, charge_data = _charge_json(charge)
         settings = await get_or_create_satspay_settings()
         async with httpx.AsyncClient() as client:
             # wordpress expects a GET request with json-encoded binary content
@@ -28,13 +37,13 @@ async def call_webhook(charge: Charge):
                 r = await client.request(
                     method="GET",
                     url=charge.webhook,
-                    content=charge.model_dump_json(),
+                    content=charge_str,
                     timeout=10,
                 )
             else:
                 r = await client.post(
                     url=charge.webhook,
-                    json=charge.model_dump(),
+                    json=charge_data,
                     timeout=10,
                 )
             r.raise_for_status()
@@ -100,6 +109,8 @@ async def check_charge_balance(charge: Charge) -> Charge:
         if payment:
             status = await payment.check_status()
             if status.success:
+                charge.settlement_method = "lightning"
+                charge.settlement_proof = status.preimage
                 charge.add_extra({"payment_method": "lightning"})
                 charge.balance = charge.amount
 
@@ -118,6 +129,9 @@ async def check_charge_balance(charge: Charge) -> Charge:
                 )
                 charge.pending = balance.unconfirmed
                 charge.add_extra({"payment_method": "onchain"})
+                if charge.balance >= charge.amount:
+                    charge.settlement_method = "onchain"
+                    charge.settlement_proof = json.dumps(balance.txids)
         except Exception as exc:
             logger.warning(f"Charge check onchain address failed with: {exc!s}")
 

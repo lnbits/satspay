@@ -35,6 +35,25 @@ const mapCharge = (obj, oldObj = {}) => {
 if (window.app) {
   window.app.component('satspay-paid', {
     props: ['charge'],
+    computed: {
+      settlementLabel() {
+        const m = this.charge.settlement_method
+        if (!m) return null
+        if (m === 'lightning') return 'Lightning'
+        if (m === 'onchain') return 'On-chain'
+        return m.charAt(0).toUpperCase() + m.slice(1)
+      },
+      settlementProofs() {
+        const p = this.charge.settlement_proof
+        if (!p) return []
+        try {
+          const parsed = JSON.parse(p)
+          return Array.isArray(parsed) ? parsed : [String(parsed)]
+        } catch {
+          return [String(p)]
+        }
+      }
+    },
     template: `
     <div>
       <q-icon
@@ -42,6 +61,19 @@ if (window.app) {
         style="color: green; font-size: 21.4em"
         class="fit"
       ></q-icon>
+      <div v-if="settlementLabel" class="row justify-center q-mt-md">
+        <div class="col-sm-10 col-md-8 text-center">
+          <div class="text-subtitle2">
+            Paid via <span v-text="settlementLabel"></span>
+          </div>
+          <div
+            v-for="proof in settlementProofs"
+            :key="proof"
+            class="text-caption text-grey ellipsis"
+            v-text="proof"
+          ></div>
+        </div>
+      </div>
       <div class="row text-center q-mt-lg">
         <div class="col text-center">
           <q-btn
@@ -276,6 +308,8 @@ window.PageSatspayPublic = {
         this.charge.pending = res.pending
         this.charge.paid = res.paid
         this.charge.completelink = res.completelink
+        this.charge.settlement_method = res.settlement_method
+        this.charge.settlement_proof = res.settlement_proof
         if (this.charge.paid) {
           this.charge.progress = 1
           this.charge.paid = true

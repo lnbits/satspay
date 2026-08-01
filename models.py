@@ -63,6 +63,8 @@ class Charge(BaseModel):
     fiat_payment_request: str | None = None
     fiat_checking_id: str | None = None
     fiat_payment_requests: str | None = None
+    settlement_method: str | None = None
+    settlement_proof: str | None = None
 
     def add_extra(self, extra: dict):
         old_extra = json.loads(self.extra) if self.extra else {}
@@ -100,6 +102,8 @@ class Charge(BaseModel):
             "fiat_currency",
             "fiat_payment_request",
             "fiat_payment_requests",
+            "settlement_method",
+            "settlement_proof",
         ]
         c = {k: v for k, v in self.dict().items() if k in public_keys}
         c["paid"] = self.paid_fasttrack
