@@ -97,12 +97,20 @@ window.i18n.global.mergeLocaleMessage('fr', {
     btc_tab: 'Onchain',
     redirecting: 'Redirection dans 5 secondes',
     send_btc_to_address: 'à cette adresse onchain',
-    pay_ln_invoice: 'Payez cette facture Lightning Network :',
-    scan_uqr: 'Scannez le QR avec un portefeuille supportant BIP21 :',
-    copy_address: "Copier l'adresse",
+    pay_ln_invoice: 'Scannez cette facture Lightning (BOLT11) :',
+    scan_uqr: 'Scannez ce QR unifié (BIP21) si votre portefeuille le supporte :',
     payment_received: 'Paiement reçu',
     awaiting_payment: 'En attente de paiement...',
     time_elapsed: 'Temps écoulé',
-    ws_reconnecting: 'Connexion WebSocket fermée. Nouvelle tentative...'
+    ws_reconnecting: 'Connexion WebSocket fermée. Nouvelle tentative...',
+    fiat_payment: 'Fiat',
+    fiat_not_configured: 'Aucun fournisseur fiat configuré',
+    fiat_tab: 'Fiat',
+    fiat_payment_desc: 'Payer {amount} via {provider} :',
+    fiat_no_payment_url: 'Aucune URL de paiement configurée pour ce fournisseur',
+    fiat_popup_blocked: 'Popup bloqué. Veuillez autoriser les popups ou essayer le lien ci-dessous.',
+    pay: 'Payer',
+    copy: 'Copier',
+    download: 'Télécharger'
   }
 })

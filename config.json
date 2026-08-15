@@ -1,9 +1,9 @@
 {
   "id": "satspay",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "name": "SatsPay Server",
   "repo": "https://github.com/lnbits/satspay",
-  "short_description": "Create onchain and LN charges",
+  "short_description": "Create onchain, LN, and fiat charges",
   "description": "",
   "tile": "/satspay/static/image/satspay.png",
   "min_lnbits_version": "1.0.0",
@@ -26,6 +26,11 @@
     {
       "name": "dni",
       "uri": "https://github.com/dni",
+      "role": "Developer"
+    },
+    {
+      "name": "Nathan Day",
+      "uri": "https://github.com/dadofsambonzuki",
       "role": "Developer"
     }
   ],
@@ -54,7 +59,11 @@
   "terms_and_conditions_md": "https://raw.githubusercontent.com/lnbits/satspay/main/toc.md",
   "license": "MIT",
   "paid_features": "",
-  "tags": ["Merchant", "Payments", "BIP21"],
+  "tags": [
+    "Merchant",
+    "Payments",
+    "BIP21"
+  ],
   "donate": "",
   "hidden": false
 }

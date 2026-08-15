@@ -49,4 +49,10 @@ def satspay_start():
     )
 
 
-__all__ = ["db", "satspay_ext", "satspay_start", "satspay_static_files", "satspay_stop"]
+__all__ = [
+    "db",
+    "satspay_ext",
+    "satspay_start",
+    "satspay_static_files",
+    "satspay_stop",
+]
