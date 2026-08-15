@@ -1,7 +1,7 @@
 import json
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from lnbits.core.crud import get_wallet
 from lnbits.core.models import Wallet, WalletTypeInfo
 from lnbits.decorators import (
@@ -28,80 +28,16 @@ from .helpers import (
     create_fiat_invoice_for_charge,
     fetch_onchain_address,
     fetch_onchain_config_network,
-    verify_fiat_webhook,
 )
 from .models import Charge, CreateCharge, SatspaySettings
 from lnbits.settings import settings
 from .tasks import (
-    send_success_websocket,
     start_onchain_listener,
     stop_onchain_listener,
 )
 from .websocket_handler import restart_websocket_task
 
 satspay_api_router = APIRouter()
-
-
-async def _find_charge_by_fiat_checking_id(checking_id: str, provider: str) -> Charge | None:
-    from .crud import db
-    return await db.fetchone(
-        """
-        SELECT * FROM satspay.charges
-        WHERE (
-            (fiat_checking_id = :checking_id AND fiat_provider = :provider)
-            OR (
-                fiat_payment_requests IS NOT NULL
-                AND json_extract(fiat_payment_requests, :json_path) = :checking_id
-            )
-        )
-        """,
-        {
-            "checking_id": checking_id,
-            "provider": provider,
-            "json_path": f"$.{provider}.checking_id",
-        },
-        Charge,
-    )
-
-
-async def handle_fiat_webhook_event(
-    provider: str, event: dict, metadata: dict
-) -> bool:
-    provider = provider.lower()
-    if provider != "stripe" or metadata.get("source") != "satspay":
-        return False
-
-    event_type = event.get("type")
-    event_object = event.get("data", {}).get("object", {})
-    if event_type != "checkout.session.completed":
-        return False
-    if event_object.get("payment_status") != "paid":
-        return False
-
-    checking_id = event_object.get("id")
-    if not checking_id:
-        return False
-
-    matching_charge = await _find_charge_by_fiat_checking_id(checking_id, provider)
-    if not matching_charge:
-        return False
-    if metadata.get("satspay_charge_id") and metadata["satspay_charge_id"] != matching_charge.id:
-        logger.warning(
-            f"SatsPay charge metadata mismatch for Stripe session '{checking_id}'."
-        )
-        return False
-    if matching_charge.paid:
-        return True
-
-    matching_charge.balance = matching_charge.amount
-    matching_charge.paid = True
-    matching_charge.settlement_method = provider
-    matching_charge.settlement_proof = checking_id
-    matching_charge = await update_charge(matching_charge)
-    await send_success_websocket(matching_charge)
-    if matching_charge.webhook:
-        await call_webhook(matching_charge)
-    return True
 
 
 async def _get_wallet_network(wallet: Wallet) -> str:
@@ -124,29 +60,6 @@ async def api_enabled() -> dict:
 @satspay_api_router.get("/api/v1/fiat/providers")
 async def api_fiat_providers(wallet: WalletTypeInfo = Depends(require_invoice_key)) -> list[str]:
     return settings.get_fiat_providers_for_user(wallet.wallet.user)
-
-
-@satspay_api_router.post("/api/v1/fiat/webhook/{provider}")
-async def api_fiat_webhook(provider: str, request: Request) -> dict:
-    payload = await request.body()
-    signature = request.headers.get("stripe-signature") or request.headers.get("paypal-transmission-sig")
-    try:
-        checking_id = await verify_fiat_webhook(provider, payload, signature)
-    except ValueError as e:
-        logger.warning(f"Fiat webhook verification failed: {e}")
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(e)) from e
-    if checking_id:
-        matching_charge = await _find_charge_by_fiat_checking_id(checking_id, provider)
-        if matching_charge and not matching_charge.paid:
-            matching_charge.balance = matching_charge.amount
-            matching_charge.paid = True
-            matching_charge.settlement_method = provider
-            matching_charge.settlement_proof = checking_id
-            matching_charge = await update_charge(matching_charge)
-            await send_success_websocket(matching_charge)
-            if matching_charge.webhook:
-                await call_webhook(matching_charge)
-    return {"status": "ok"}
 
 
 @satspay_api_router.post("/api/v1/charge")
@@ -185,12 +98,18 @@ async def api_charge_create(data: CreateCharge, key_type: WalletTypeInfo = Depen
 
     if data.fiat_provider:
         try:
-            fiat_result = await create_fiat_invoice_for_charge(charge, data, data.fiat_provider)
+            fiat_result = await create_fiat_invoice_for_charge(
+                charge,
+                data,
+                data.fiat_provider,
+                wallet_id=data.lnbitswallet or key_type.wallet.id,
+            )
             if fiat_result:
                 charge.fiat_payment_requests = json.dumps({
                     data.fiat_provider: {
                         "payment_request": fiat_result.get("payment_request"),
                         "checking_id": fiat_result.get("checking_id"),
+                        "payment_hash": fiat_result.get("payment_hash"),
                     }
                 })
                 charge = await update_charge(charge)

@@ -6,7 +6,7 @@ from loguru import logger
 from .crud import db
 from .tasks import restart_address_tracking, wait_for_onchain, wait_for_paid_invoices
 from .views import satspay_generic_router
-from .views_api import handle_fiat_webhook_event, satspay_api_router
+from .views_api import satspay_api_router
 from .views_api_themes import satspay_theme_router
 from .websocket_handler import restart_websocket_task, websocket_task
 
@@ -26,12 +26,6 @@ scheduled_tasks: list[asyncio.Task] = []
 
 
 def satspay_stop():
-    try:
-        from lnbits.core.views.callback_api import unregister_fiat_webhook_handler
-
-        unregister_fiat_webhook_handler(handle_fiat_webhook_event)
-    except ImportError:
-        pass
     for task in scheduled_tasks:
         try:
             task.cancel()
@@ -42,18 +36,6 @@ def satspay_stop():
 
 
 def satspay_start():
-    try:
-        from lnbits.core.views.callback_api import register_fiat_webhook_handler
-
-        register_fiat_webhook_handler("stripe", "satspay", handle_fiat_webhook_event)
-    except ImportError:
-        logger.warning(
-            "register_fiat_webhook_handler not available in core, "
-            "fiat webhook handling disabled. Upgrade core or apply PR #4051."
-        )
-    from lnbits.tasks import create_permanent_unique_task, create_unique_task
-    except ImportError:
-        logger.debug("register_fiat_webhook_handler not available in core")
     from lnbits.tasks import create_permanent_unique_task, create_unique_task
 
     paid_invoices_task = create_permanent_unique_task(

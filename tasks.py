@@ -79,6 +79,24 @@ async def on_invoice_paid(payment: Payment) -> None:
     charge = await get_charge(charge_id)
     assert charge, f"On invoice paid, charge `{charge_id}` not found."
 
+    if payment.fiat_provider:
+        # fiat payment created and confirmed via core's fiat provider integration
+        if charge.paid or payment.fiat_provider != charge.fiat_provider:
+            return
+        charge.balance = charge.amount
+        charge.paid = True
+        charge.settlement_method = payment.fiat_provider
+        charge.settlement_proof = payment.extra.get("fiat_checking_id")
+        charge.add_extra({"payment_method": payment.fiat_provider})
+        logger.success(f"Charge {charge.id} fiat invoice paid ({payment.fiat_provider}).")
+        charge = await update_charge(charge)
+        await send_success_websocket(charge)
+        if charge.webhook:
+            resp = await call_webhook(charge)
+            charge.add_extra(resp)
+            await update_charge(charge)
+        return
+
     if charge.lnbitswallet and charge.payment_hash == payment.payment_hash:
         charge.balance = int(payment.amount / 1000)
         charge.paid = True
