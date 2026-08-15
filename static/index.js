@@ -466,4 +466,20 @@ window.PageSatspay = {
           this.fiatRates = rates
         })
         .catch(LNbits.utils.notifyApiError)
-    },
+    }
+  },
+  async created() {
+    try {
+      const {data} = await LNbits.api.request(
+        'GET',
+        '/satspay/api/v1/settings/public'
+      )
+      this.network = data.network
+    } catch (e) {}
+    if (this.g.user.admin) {
+      await this.getThemes()
+    }
+    await this.getCharges()
+    await this.getWalletLinks()
+  }
+}
