@@ -62,6 +62,14 @@ async def api_charge_create(
         )
     if data.currency and data.currency_amount:
         rate = await get_fiat_rate_satoshis(data.currency)
+        if rate <= 0:
+            raise HTTPException(
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                detail=(
+                    f"Could not fetch Bitcoin price for {data.currency}. "
+                    "Please try again later."
+                ),
+            )
         data.amount = round(rate * data.currency_amount)
     if not data.onchainwallet and not data.lnbitswallet:
         raise HTTPException(
