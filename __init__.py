@@ -36,17 +36,19 @@ def satspay_stop():
 
 
 def satspay_start():
-    from lnbits.tasks import create_permanent_unique_task, create_unique_task
+    from lnbits.tasks import create_permanent_unique_task
 
     paid_invoices_task = create_permanent_unique_task(
         "ext_satspay_paid_invoices", wait_for_paid_invoices
     )
     onchain_task = create_permanent_unique_task("ext_satspay_onchain", wait_for_onchain)
-    scheduled_tasks.extend([paid_invoices_task, onchain_task])
-    restart_websocket_task()
-    create_unique_task(
-        "ext_satspay_restart_address_tracking", restart_address_tracking()
+    onchain_balance_task = create_permanent_unique_task(
+        "ext_satspay_restart_address_tracking", restart_address_tracking
     )
+    scheduled_tasks.extend(
+        [paid_invoices_task, onchain_task, onchain_balance_task]
+    )
+    restart_websocket_task()
 
 
 __all__ = ["db", "satspay_ext", "satspay_start", "satspay_static_files", "satspay_stop"]
