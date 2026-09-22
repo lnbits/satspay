@@ -1,4 +1,5 @@
 import asyncio
+import json
 import time
 
 from fastapi import WebSocket
@@ -31,6 +32,8 @@ async def restart_address_tracking():
             charge = await check_charge_balance(charge)
             assert charge.onchainaddress
             if charge.paid:
+                if not charge.settlement_method:
+                    charge.settlement_method = "onchain"
                 charge.add_extra({"payment_method": "onchain"})
                 await update_charge(charge)
                 logger.success(f"Charge {charge.id} marked as paid.")
@@ -56,6 +59,8 @@ async def send_success_websocket(charge: Charge):
                         "paid": charge.paid_fasttrack,
                         "balance": charge.balance,
                         "pending": charge.pending,
+                        "settlement_method": charge.settlement_method,
+                        "settlement_proof": charge.settlement_proof,
                         "completelink": (
                             charge.completelink if charge.paid_fasttrack else None
                         ),
@@ -74,10 +79,30 @@ async def on_invoice_paid(payment: Payment) -> None:
     charge = await get_charge(charge_id)
     assert charge, f"On invoice paid, charge `{charge_id}` not found."
 
+    if payment.fiat_provider:
+        # fiat payment created and confirmed via core's fiat provider integration
+        if charge.paid or payment.fiat_provider != charge.fiat_provider:
+            return
+        charge.balance = charge.amount
+        charge.paid = True
+        charge.settlement_method = payment.fiat_provider
+        charge.settlement_proof = payment.extra.get("fiat_checking_id")
+        charge.add_extra({"payment_method": payment.fiat_provider})
+        logger.success(f"Charge {charge.id} fiat invoice paid ({payment.fiat_provider}).")
+        charge = await update_charge(charge)
+        await send_success_websocket(charge)
+        if charge.webhook:
+            resp = await call_webhook(charge)
+            charge.add_extra(resp)
+            await update_charge(charge)
+        return
+
     if charge.lnbitswallet and charge.payment_hash == payment.payment_hash:
         charge.balance = int(payment.amount / 1000)
         charge.paid = True
         logger.success(f"Charge {charge.id} invoice paid.")
+        charge.settlement_method = "lightning"
+        charge.settlement_proof = payment.preimage
         charge.add_extra({"payment_method": "lightning"})
         charge = await update_charge(charge)
         await send_success_websocket(charge)
@@ -126,6 +151,8 @@ async def _handle_ws_message(address: str, data: dict):
     charge.pending = unconfirmed_balance
     charge.paid = charge.balance >= charge.amount
     if charge.paid:
+        charge.settlement_method = "onchain"
+        charge.settlement_proof = json.dumps(confirmed_txids + unconfirmed_txids)
         charge.add_extra({"payment_method": "onchain"})
         logger.success(f"Charge {charge.id} onchain paid.")
         stop_onchain_listener(address)

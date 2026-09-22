@@ -35,6 +35,25 @@ const mapCharge = (obj, oldObj = {}) => {
 if (window.app) {
   window.app.component('satspay-paid', {
     props: ['charge'],
+    computed: {
+      settlementLabel() {
+        const m = this.charge.settlement_method
+        if (!m) return null
+        if (m === 'lightning') return 'Lightning'
+        if (m === 'onchain') return 'On-chain'
+        return m.charAt(0).toUpperCase() + m.slice(1)
+      },
+      settlementProofs() {
+        const p = this.charge.settlement_proof
+        if (!p) return []
+        try {
+          const parsed = JSON.parse(p)
+          return Array.isArray(parsed) ? parsed : [String(parsed)]
+        } catch {
+          return [String(p)]
+        }
+      }
+    },
     template: `
     <div>
       <q-icon
@@ -42,25 +61,28 @@ if (window.app) {
         style="color: green; font-size: 21.4em"
         class="fit"
       ></q-icon>
+      <div v-if="settlementLabel" class="row justify-center q-mt-md">
+        <div class="col-sm-10 col-md-8 text-center">
+          <div class="text-subtitle2">
+            Paid via <span v-text="settlementLabel"></span>
+          </div>
+          <div
+            v-for="proof in settlementProofs"
+            :key="proof"
+            class="text-caption text-grey ellipsis"
+            v-text="proof"
+          ></div>
+        </div>
+      </div>
       <div class="row text-center q-mt-lg">
         <div class="col text-center">
           <q-btn
             outline
             v-if="charge.completelink"
-            :loading="charge.paid"
             type="a"
             :href="charge.completelink"
-            :label="charge.completelinktext"
-          >
-            <template v-slot:loading>
-              <span v-text="charge.completelinktext"></span>
-            </template>
-          </q-btn>
-          <p
-            v-if="charge.completelink"
-            class="q-pt-md"
-            v-text="$t('satspay.redirecting')"
-          ></p>
+            :label="charge.completelinktext || 'View your tickets'"
+          ></q-btn>
         </div>
       </div>
     </div>`
@@ -74,45 +96,52 @@ if (window.app) {
       <div class="row justify-center q-mb-sm">
         <div class="col text-center">
           <span v-if="type == 'btc'" class="text-subtitle2">
-            Send
-            <strong><span v-text="chargeAmountBtc"></span> BTC</strong>
-            <span v-text="$t('satspay.send_btc_to_address')"></span>
+            Send <strong><span v-text="chargeAmountBtc"></span> BTC</strong> <span v-text="$t('satspay.send_btc_to_address')"></span>:
           </span>
-          <span
-            v-if="type == 'ln'"
-            class="text-subtitle2"
-            v-text="$t('satspay.pay_ln_invoice')"
-          ></span>
-          <span
-            v-if="type == 'uqr'"
-            class="text-subtitle2"
-            v-text="$t('satspay.scan_uqr')"
-          ></span>
+          <span v-if="type == 'ln'" class="text-subtitle2" v-text="$t('satspay.pay_ln_invoice')"></span>
+          <span v-if="type == 'uqr'" class="text-subtitle2" v-text="$t('satspay.scan_uqr')"></span>
         </div>
       </div>
       <div class="row justify-center q-mb-sm">
-        <div class="col-all">
-          <a class="text-secondary" :href="href">
-            <q-responsive :ratio="1" class="q-mx-md">
-              <lnbits-qrcode :value="value"></lnbits-qrcode>
-            </q-responsive>
-          </a>
+        <div class="col-all text-center">
+          <lnbits-qrcode
+            ref="qrcode"
+            :value="value"
+            :href="href"
+            :show-buttons="false"
+            :max-width="420"
+          ></lnbits-qrcode>
         </div>
       </div>
-      <div class="row items-center q-mt-lg">
-        <div class="col text-center">
-          <q-btn
-            outline
-            color="grey"
-            @click="utils.copyText(value)"
-            :label="$t('satspay.copy_address')"
-          ></q-btn>
-        </div>
+      <div class="row justify-center q-mt-sm" style="flex-wrap: wrap;">
+        <q-btn unelevated color="primary" icon="payment" class="q-mr-sm q-mb-sm" @click="pay">
+          <span v-text="$t('satspay.pay')"></span>
+        </q-btn>
+        <q-btn unelevated color="grey" icon="content_copy" class="q-mr-sm q-mb-sm" @click="utils.copyText(value)">
+          <span v-text="$t('satspay.copy')"></span>
+        </q-btn>
+        <q-btn unelevated color="grey" icon="download" class="q-mb-sm" @click="downloadQr">
+          <span v-text="$t('satspay.download')"></span>
+        </q-btn>
       </div>
     </div>`,
     computed: {
       chargeAmountBtc() {
         return (this.chargeAmount / 1e8).toFixed(8)
+      }
+    },
+    methods: {
+      pay() {
+        if (this.href) {
+          window.location.href = this.href
+        } else {
+          this.utils.copyText(this.value)
+        }
+      },
+      downloadQr() {
+        if (this.$refs.qrcode) {
+          this.$refs.qrcode.downloadSVG()
+        }
       }
     }
   })
@@ -198,6 +227,26 @@ window.PageSatspayPublic = {
       }
       return queryString
     },
+    fiatProvidersList() {
+      if (!this.charge?.fiat_payment_requests) return []
+      try {
+        const reqs = typeof this.charge.fiat_payment_requests === 'string'
+          ? JSON.parse(this.charge.fiat_payment_requests)
+          : this.charge.fiat_payment_requests
+        return Object.entries(reqs).map(([name, data]) => ({
+          name,
+          payment_request: data.payment_request
+        }))
+      } catch {
+        return []
+      }
+    },
+    formattedFiatAmount() {
+      const amt = this.charge?.currency_amount
+      const cur = this.charge?.fiat_currency || this.charge?.currency
+      if (amt == null || !cur) return ''
+      return `${Number(amt).toFixed(2)} ${cur.toUpperCase()}`
+    },
     hasEnded() {
       const chargeTimeSeconds = this.charge.time * 60
       const now = new Date().getTime() / 1000
@@ -231,6 +280,24 @@ window.PageSatspayPublic = {
         LNbits.utils.notifyApiError(error)
       }
     },
+    payFiat(provider) {
+      if (!provider.payment_request) {
+        this.$q.notify({
+          type: 'negative',
+          message: this.$t('satspay.fiat_no_payment_url'),
+          timeout: 5000
+        })
+        return
+      }
+      const win = window.open(provider.payment_request, '_blank')
+      if (!win) {
+        this.$q.notify({
+          type: 'warning',
+          message: this.$t('satspay.fiat_popup_blocked'),
+          timeout: 10000
+        })
+      }
+    },
     async initWs() {
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
       const url = `${protocol}://${window.location.host}/satspay/${this.charge.id}/ws`
@@ -241,14 +308,11 @@ window.PageSatspayPublic = {
         this.charge.pending = res.pending
         this.charge.paid = res.paid
         this.charge.completelink = res.completelink
+        this.charge.settlement_method = res.settlement_method
+        this.charge.settlement_proof = res.settlement_proof
         if (this.charge.paid) {
           this.charge.progress = 1
           this.charge.paid = true
-          if (this.charge.completelink) {
-            setTimeout(() => {
-              window.location.href = this.charge.completelink
-            }, 5000)
-          }
           this.$q.notify({
             type: 'positive',
             message: this.$t('satspay.payment_received'),

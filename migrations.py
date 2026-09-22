@@ -194,3 +194,143 @@ async def m014_fasttrack_to_charge(db: Database):
         )
     except OperationalError:
         pass
+
+
+async def m015_add_fiat_charge_columns(db: Database):
+    """
+    Add fiat-related columns to charges.
+    """
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN fiat_provider TEXT"
+        )
+    except OperationalError:
+        pass
+
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN fiat_currency TEXT"
+        )
+    except OperationalError:
+        pass
+
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN fiat_payment_request TEXT"
+        )
+    except OperationalError:
+        pass
+
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN fiat_checking_id TEXT"
+        )
+    except OperationalError:
+        pass
+
+
+async def m016_add_fiat_payment_requests(db: Database):
+    """
+    Add fiat_payment_requests column for storing multiple fiat provider
+    payment requests per charge as JSON.
+    """
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN fiat_payment_requests TEXT"
+        )
+    except OperationalError:
+        pass
+
+async def m017_add_settlement_columns(db: Database):
+    """
+    Add settlement_method and settlement_proof columns to record how a
+    charge was actually settled (method + proof: preimage / txids / fiat id).
+    """
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN settlement_method TEXT"
+        )
+    except OperationalError:
+        pass
+
+    try:
+        await db.execute(
+            "ALTER TABLE satspay.charges ADD COLUMN settlement_proof TEXT"
+        )
+    except OperationalError:
+        pass
+
+async def m018_backfill_settlement(db: Database):
+    """
+    Backfill settlement_method and settlement_proof for charges paid before
+    those columns existed, using data already stored on the charge row.
+    """
+    import json as _json
+
+    from loguru import logger
+
+    from lnbits.core.crud import get_standalone_payment
+
+    rows = await db.fetchall(
+        "SELECT id, payment_hash, fiat_provider, fiat_checking_id, "
+        "fiat_payment_requests, extra FROM satspay.charges "
+        "WHERE paid = true AND settlement_method IS NULL"
+    )
+
+    backfilled = 0
+    for row in rows:
+        extra = {}
+        if row["extra"]:
+            try:
+                extra = _json.loads(row["extra"])
+            except Exception:
+                extra = {}
+
+        method = None
+        proof = None
+        marker = extra.get("payment_method")
+
+        if marker == "lightning":
+            method = "lightning"
+            proof = None
+            if row["payment_hash"]:
+                try:
+                    payment = await get_standalone_payment(row["payment_hash"])
+                    if payment and payment.preimage:
+                        proof = payment.preimage
+                except Exception:
+                    pass
+            if not proof:
+                proof = row["payment_hash"]
+
+        elif marker == "onchain":
+            method = "onchain"
+            txids = extra.get("txids")
+            if txids:
+                proof = _json.dumps(txids)
+
+        elif row["fiat_provider"]:
+            checking_id = row["fiat_checking_id"]
+            if not checking_id and row["fiat_payment_requests"]:
+                try:
+                    reqs = _json.loads(row["fiat_payment_requests"])
+                    checking_id = reqs.get(row["fiat_provider"], {}).get("checking_id")
+                except Exception:
+                    checking_id = None
+            if checking_id:
+                method = row["fiat_provider"]
+                proof = checking_id
+
+        if not method:
+            continue
+
+        await db.execute(
+            "UPDATE satspay.charges SET settlement_method = :method, "
+            "settlement_proof = :proof WHERE id = :id",
+            {"method": method, "proof": proof, "id": row["id"]},
+        )
+        backfilled += 1
+
+    if backfilled:
+        logger.info(f"SatsPay: backfilled settlement info for {backfilled} charges.")
+

@@ -486,36 +486,14 @@
             :label="$t('satspay.mins_valid')"
           ></q-input>
 
-          <div class="row">
-            <div class="col">
-              <div v-if="walletLinks.length > 0">
-                <q-checkbox
-                  v-model="formDialogCharge.data.onchain"
-                  :label="$t('satspay.onchain')"
-                ></q-checkbox>
-              </div>
-              <div v-else>
-                <q-checkbox
-                  :value="false"
-                  :label="$t('satspay.onchain')"
-                  disabled
-                >
-                  <q-tooltip
-                    v-text="$t('satspay.onchain_wallet_tooltip')"
-                  ></q-tooltip>
-                </q-checkbox>
-              </div>
-            </div>
-            <div class="col">
-              <q-checkbox
-                v-model="formDialogCharge.data.lnbits"
-                :label="$t('satspay.lnbits_wallet_label')"
-              ></q-checkbox>
-            </div>
-          </div>
-
-          <div v-if="formDialogCharge.data.onchain">
+          <div v-if="walletLinks.length > 0">
+            <q-checkbox
+              v-model="formDialogCharge.data.onchain"
+              :label="$t('satspay.onchain')"
+            ></q-checkbox>
             <q-select
+              v-if="formDialogCharge.data.onchain"
+              class="q-mt-sm"
               filled
               dense
               emit-value
@@ -526,7 +504,7 @@
             <q-item
               tag="label"
               v-ripple
-              v-if="!formDialogCharge.data.fasttrack"
+              v-if="formDialogCharge.data.onchain && !formDialogCharge.data.fasttrack"
             >
               <q-item-section avatar top>
                 <q-checkbox
@@ -543,7 +521,7 @@
                 ></q-item-label>
               </q-item-section>
             </q-item>
-            <q-item tag="label" v-ripple v-if="!formDialogCharge.data.zeroconf">
+            <q-item tag="label" v-ripple v-if="formDialogCharge.data.onchain && !formDialogCharge.data.zeroconf">
               <q-item-section avatar top>
                 <q-checkbox
                   v-model="formDialogCharge.data.fasttrack"
@@ -560,9 +538,25 @@
               </q-item-section>
             </q-item>
           </div>
+          <div v-else>
+            <q-checkbox
+              :value="false"
+              :label="$t('satspay.onchain')"
+              disabled
+            >
+              <q-tooltip
+                v-text="$t('satspay.onchain_wallet_tooltip')"
+              ></q-tooltip>
+            </q-checkbox>
+          </div>
 
+          <q-checkbox
+            v-model="formDialogCharge.data.lnbits"
+            :label="$t('satspay.lnbits_wallet_label')"
+          ></q-checkbox>
           <q-select
             v-if="formDialogCharge.data.lnbits"
+            class="q-mt-sm"
             filled
             dense
             emit-value
@@ -570,6 +564,34 @@
             :options="g.user.walletOptions"
             :label="$t('satspay.wallet')"
           ></q-select>
+
+          <div v-if="g.user.fiat_providers && g.user.fiat_providers.length">
+            <q-checkbox
+              v-model="formDialogCharge.data.fiat"
+              :label="$t('satspay.fiat_payment')"
+            ></q-checkbox>
+            <q-select
+              v-if="formDialogCharge.data.fiat"
+              class="q-mt-sm"
+              filled
+              dense
+              emit-value
+              v-model="formDialogCharge.data.fiat_provider"
+              :options="g.user.fiat_providers"
+              :label="$t('satspay.fiat_payment')"
+            ></q-select>
+          </div>
+          <div v-else>
+            <q-checkbox
+              :value="false"
+              :label="$t('satspay.fiat_payment')"
+              disabled
+            >
+              <q-tooltip
+                v-text="$t('satspay.fiat_not_configured')"
+              ></q-tooltip>
+            </q-checkbox>
+          </div>
 
           <q-toggle
             v-model="showAdvanced"

@@ -182,6 +182,8 @@ window.PageSatspay = {
           zeroconf: false,
           fasttrack: false,
           lnbits: false,
+          fiat: false,
+          fiat_provider: '',
           description: '',
           custom_css: '',
           time: null,
@@ -207,6 +209,8 @@ window.PageSatspay = {
       this.formDialogCharge.data.onchain = false
       this.formDialogCharge.data.onchainwallet = ''
       this.formDialogCharge.data.zeroconf = false
+      this.formDialogCharge.data.fiat = false
+      this.formDialogCharge.data.fiat_provider = ''
       this.formDialogCharge.data.lnbitswallet = ''
       this.formDialogCharge.data.time = null
       this.formDialogCharge.data.amount = null
@@ -296,6 +300,7 @@ window.PageSatspay = {
       data.time = parseInt(data.time)
       data.lnbitswallet = data.lnbits ? data.lnbitswallet : null
       data.onchainwallet = data.onchain ? this.onchainwallet?.id : null
+      data.fiat_provider = data.fiat ? data.fiat_provider : null
       this.createCharge(wallet, data)
     },
     updateformDialog(themeId) {
@@ -368,6 +373,8 @@ window.PageSatspay = {
           onchain: false,
           zeroconf: false,
           lnbits: false,
+          fiat: false,
+          fiat_provider: '',
           description: '',
           time: null,
           amount: null,

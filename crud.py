@@ -48,6 +48,10 @@ async def create_charge(
         custom_css=data.custom_css,
         currency=data.currency,
         currency_amount=data.currency_amount,
+        fiat_provider=data.fiat_provider,
+        fiat_currency=data.fiat_currency,
+        fiat_payment_request=None,
+        fiat_checking_id=None,
     )
 
     if data.onchainwallet:
