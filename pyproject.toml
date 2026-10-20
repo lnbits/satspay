@@ -45,6 +45,7 @@ testpaths = [
 
 [tool.black]
 line-length = 88
+target-version = ["py310"]
 
 [tool.ruff]
 # Same as Black. + 10% rule of black

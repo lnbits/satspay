@@ -13,18 +13,19 @@ from lnbits.settings import settings
 from loguru import logger
 
 from .crud import get_or_create_satspay_settings
-from .models import Charge, OnchainBalance
+from .models import Charge, OnchainBalance, validate_http_url
 
 
 async def call_webhook(charge: Charge):
     try:
         if not charge.webhook or not charge.webhook_secret:
             raise ValueError("Webhook configuration is missing.")
+        validate_http_url(charge.webhook)
         check_callback_url(charge.webhook)
         url = httpx.URL(charge.webhook)
         parsed = urlparse(str(url))
         addresses = await _resolve_webhook_host(url.host, url.port)
-        if not settings.lnbits_callback_allow_private_ips and any(
+        if not getattr(settings, "lnbits_callback_allow_private_ips", False) and any(
             not address.is_global for address in addresses
         ):
             raise ValueError("Webhook target IP address is not allowed.")
