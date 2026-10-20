@@ -128,3 +128,26 @@ test('currencies use the full list unless the operator restricts it', () => {
     assert.deepEqual([...values], expected)
   }
 })
+
+for (const file of ['index.js', 'display.js']) {
+  test(`${file}: a 60-minute charge starts at one hour`, () => {
+    const context = load(file)
+    vm.runInContext(
+      `
+      Date = class extends Date {
+        constructor(value) { super(value ?? '2026-10-19T14:00:00Z') }
+      }
+    `,
+      context
+    )
+    const charge = vm.runInContext(
+      `
+      mapCharge({id: 'charge', time: 60, timestamp: '2026-10-19T14:00:00+00:00'})
+    `,
+      context
+    )
+    assert.equal(charge.timeSecondsLeft, 3600)
+    assert.equal(charge.timeLeft, '01:00:00')
+    assert.equal(charge.progress, 1)
+  })
+}
