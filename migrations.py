@@ -1,5 +1,7 @@
+from secrets import token_hex
+
 from lnbits.db import Database
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 
 async def m001_initial(db: Database):
@@ -202,3 +204,20 @@ async def m015_private_mempool_opt_in(db: Database):
         "ALTER TABLE satspay.settings ADD COLUMN "
         "mempool_allow_private_ips BOOLEAN NOT NULL DEFAULT FALSE"
     )
+
+
+async def m016_add_webhook_secret(db: Database):
+    try:
+        await db.execute("ALTER TABLE satspay.charges ADD COLUMN webhook_secret TEXT")
+    except (OperationalError, ProgrammingError):
+        pass
+
+    charges: list = await db.fetchall("""
+        SELECT id FROM satspay.charges
+        WHERE webhook IS NOT NULL AND webhook_secret IS NULL
+        """)
+    for row in charges:
+        await db.execute(
+            "UPDATE satspay.charges SET webhook_secret = :secret WHERE id = :id",
+            {"id": row["id"], "secret": token_hex(32)},
+        )

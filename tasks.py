@@ -2,7 +2,7 @@ import asyncio
 import time
 from weakref import WeakValueDictionary
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 from lnbits.core.models import Payment
 from lnbits.settings import settings
 from lnbits.tasks import register_invoice_listener
@@ -26,6 +26,7 @@ poll_tasks: dict[str, asyncio.Task] = {}
 onchain_refresh_locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
 ONCHAIN_POLL_INTERVAL = 30
+MAX_TRACKED_ADDRESSES = 1000
 
 
 async def restart_address_tracking():
@@ -34,13 +35,13 @@ async def restart_address_tracking():
             continue
         if not _should_track_onchain_charge(charge):
             continue
-        start_onchain_listener(charge.onchainaddress)
         try:
+            start_onchain_listener(charge.onchainaddress)
             if not await _refresh_onchain_charge(charge.onchainaddress):
                 stop_onchain_listener(charge.onchainaddress)
         except Exception as exc:
             logger.warning(
-                f"Onchain charge refresh failed for {charge.onchainaddress}: {exc!s}"
+                f"Onchain charge refresh failed for {charge.onchainaddress}: {type(exc).__name__}"
             )
 
 
@@ -54,19 +55,24 @@ async def wait_for_paid_invoices():
 
 
 async def send_success_websocket(charge: Charge):
-    for charge_id, listeners in public_ws_listeners.items():
-        if charge_id == charge.id:
-            for listener in listeners:
-                await listener.send_json(
-                    {
-                        "paid": charge.paid_fasttrack,
-                        "balance": charge.balance,
-                        "pending": charge.pending,
-                        "completelink": (
-                            charge.completelink if charge.paid_fasttrack else None
-                        ),
-                    }
-                )
+    for listener in public_ws_listeners.get(charge.id, [])[:]:
+        try:
+            await listener.send_json(
+                {
+                    "paid": charge.paid_fasttrack,
+                    "balance": charge.balance,
+                    "pending": charge.pending,
+                    "completelink": (
+                        charge.safe_completelink if charge.paid_fasttrack else None
+                    ),
+                }
+            )
+        except (WebSocketDisconnect, RuntimeError, OSError):
+            listeners = public_ws_listeners.get(charge.id, [])
+            if listener in listeners:
+                listeners.remove(listener)
+            if not listeners:
+                public_ws_listeners.pop(charge.id, None)
 
 
 async def on_invoice_paid(payment: Payment) -> None:
@@ -78,16 +84,19 @@ async def on_invoice_paid(payment: Payment) -> None:
         return
 
     charge = await get_charge(charge_id)
-    assert charge, f"On invoice paid, charge `{charge_id}` not found."
+    if not charge or charge.paid:
+        return
 
     if charge.lnbitswallet and charge.payment_hash == payment.payment_hash:
         charge.balance = int(payment.amount / 1000)
-        charge.paid = True
+        charge.paid = charge.balance >= charge.amount
         logger.success(f"Charge {charge.id} invoice paid.")
         charge.add_extra({"payment_method": "lightning"})
         charge = await update_charge(charge)
+        if charge.paid and charge.onchainaddress:
+            stop_onchain_listener(charge.onchainaddress)
         await send_success_websocket(charge)
-        if charge.webhook:
+        if charge.paid and charge.webhook:
             resp = await call_webhook(charge)
             await update_charge_webhook(charge, resp)
 
@@ -95,9 +104,11 @@ async def on_invoice_paid(payment: Payment) -> None:
 def start_onchain_listener(address: str):
     if address in tracked_addresses:
         return
+    if len(tracked_addresses) >= MAX_TRACKED_ADDRESSES:
+        raise ValueError("Onchain tracking capacity reached.")
     tracked_addresses.append(address)
     logger.debug(f"start_onchain_listener ({len(tracked_addresses)}")
-    ws_send_queue.put_nowait({"track-addresses": list(tracked_addresses)})
+    _send_tracking_update()
     if address not in poll_tasks:
         poll_tasks[address] = asyncio.create_task(_poll_charge(address))
 
@@ -106,7 +117,7 @@ def stop_onchain_listener(address: str):
     if address in tracked_addresses:
         tracked_addresses.remove(address)
         logger.debug(f"stop_onchain_listener ({len(tracked_addresses)}")
-        ws_send_queue.put_nowait({"track-addresses": list(tracked_addresses)})
+        _send_tracking_update()
     task = poll_tasks.pop(address, None)
     if task and task is not asyncio.current_task():
         task.cancel()
@@ -129,11 +140,13 @@ async def wait_for_onchain():
         if not txs:
             continue
         for address in txs:
+            if address not in tracked_addresses:
+                continue
             try:
                 if not await _refresh_onchain_charge(address):
                     stop_onchain_listener(address)
             except Exception as exc:
-                logger.warning(f"Onchain charge update failed for {address}: {exc!s}")
+                logger.warning(f"Onchain charge update failed for {address}: {type(exc).__name__}")
 
 
 async def _poll_charge(address: str):
@@ -144,7 +157,7 @@ async def _poll_charge(address: str):
                 stop_onchain_listener(address)
                 return
         except Exception as exc:
-            logger.warning(f"Onchain charge poll failed for {address}: {exc!s}")
+            logger.warning(f"Onchain charge poll failed for {address}: {type(exc).__name__}")
 
 
 def _should_track_onchain_charge(charge: Charge) -> bool:
@@ -186,3 +199,9 @@ async def _notify_onchain_charge(charge: Charge):
         await update_charge_webhook(charge, resp)
     if charge.paid:
         logger.success(f"Charge {charge.id} paid.")
+
+
+def _send_tracking_update():
+    if not ws_send_queue.empty():
+        ws_send_queue.get_nowait()
+    ws_send_queue.put_nowait({"track-addresses": list(tracked_addresses)})

@@ -1,6 +1,9 @@
+import hmac
+import json
 import re
+from time import time
 from http import HTTPStatus
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import httpx
 from lnbits.core.crud import get_standalone_payment
@@ -28,23 +31,28 @@ MEMPOOL_SPACE_URLS = {
 
 async def call_webhook(charge: Charge):
     try:
-        assert charge.webhook, "charge has no webhook"
+        if not charge.webhook or not charge.webhook_secret:
+            raise ValueError("Webhook configuration is missing.")
         settings = await get_or_create_satspay_settings()
+        payload = charge.model_dump_json(exclude={"webhook_secret"})
+        # Preserve Wordpress's JSON string payload for POST callbacks.
+        body = (json.dumps(payload) if settings.webhook_method == "POST" else payload).encode()
+        timestamp = str(int(time()))
+        signature = hmac.new(
+            charge.webhook_secret.encode(), timestamp.encode() + b"." + body, "sha256"
+        ).hexdigest()
         async with SafeHttpClient(read_body=False) as client:
-            # wordpress expects a GET request with json-encoded binary content
-            if settings.webhook_method == "GET":
-                r = await client.request(
-                    method="GET",
-                    url=charge.webhook,
-                    content=charge.model_dump_json(),
-                    timeout=10,
-                )
-            else:
-                r = await client.post(
-                    url=charge.webhook,
-                    json=charge.model_dump_json(),
-                    timeout=10,
-                )
+            r = await client.request(
+                method=settings.webhook_method,
+                url=charge.webhook,
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-LNBits-Timestamp": timestamp,
+                    "X-LNBits-Signature": signature,
+                },
+                timeout=10,
+            )
             r.raise_for_status()
             logger.success(f"Webhook sent for charge {charge.id}")
             return {
@@ -95,15 +103,26 @@ async def fetch_onchain_config_network(api_key: str) -> str:
         return config["network"]
 
 
-async def fetch_onchain_address(wallet_id: str, api_key: str) -> str:
+async def fetch_onchain_address(wallet_id: str, api_key: str, network: str) -> str:
     async with httpx.AsyncClient() as client:
+        wallets = await client.get(
+            url=f"http://{settings.host}:{settings.port}/watchonly/api/v1/wallet",
+            headers={"X-API-KEY": api_key},
+            params={"network": network},
+        )
+        wallets.raise_for_status()
+        if not any(wallet["id"] == wallet_id for wallet in wallets.json()):
+            raise ValueError("Onchain wallet does not belong to you.")
         r = await client.get(
-            url=f"http://{settings.host}:{settings.port}/watchonly/api/v1/address/{wallet_id}",
+            url=(
+                f"http://{settings.host}:{settings.port}/watchonly/api/v1/address/"
+                f"{quote(wallet_id, safe='')}"
+            ),
             headers={"X-API-KEY": api_key},
         )
         r.raise_for_status()
         address_data = r.json()
-        if not address_data and "address" not in address_data:
+        if not isinstance(address_data, dict) or not address_data.get("address"):
             raise ValueError("Cannot fetch new address!")
         return address_data["address"]
 
@@ -231,7 +250,10 @@ async def check_charge_balance(charge: Charge, notify_webhook: bool = True) -> C
                 charge.add_extra({"payment_method": "onchain"})
         except Exception as exc:
             logger.warning(
-                "Charge check onchain address failed: {}", type(exc).__name__
+                "Charge check onchain address failed: {}",
+                f"HTTP {exc.response.status_code}"
+                if isinstance(exc, httpx.HTTPStatusError)
+                else type(exc).__name__
             )
 
     charge.paid = charge.balance >= charge.amount

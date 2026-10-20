@@ -10,7 +10,7 @@ from loguru import logger
 from .crud import get_or_create_satspay_settings
 
 ws_receive_queue: asyncio.Queue[dict] = asyncio.Queue()
-ws_send_queue: asyncio.Queue[dict] = asyncio.Queue()
+ws_send_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=1)
 
 tracked_addresses: list[str] = []
 
