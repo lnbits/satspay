@@ -6,7 +6,7 @@
   "short_description": "Create onchain and LN charges",
   "description": "",
   "tile": "/satspay/static/image/satspay.png",
-  "min_lnbits_version": "1.0.0",
+  "min_lnbits_version": "1.6.2",
   "contributors": [
     {
       "name": "motorina0",

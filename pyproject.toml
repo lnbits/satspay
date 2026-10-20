@@ -5,14 +5,13 @@ requires-python = ">=3.10,<3.13"
 description = "LNbits, free and open-source Lightning wallet and accounts system."
 authors = [{ name = "Alan Bits", email = "alan@lnbits.com" }]
 urls = { Homepage = "https://lnbits.com", Repository = "https://github.com/lnbits/events" }
-dependencies = [ "lnbits>1" ]
+dependencies = [ "lnbits>=1.6.2" ]
 
 [dependency-groups]
 dev = [
     "black",
     "pytest-asyncio",
     "pytest",
-    "pytest-md",
     "mypy",
     "pre-commit",
     "ruff",
@@ -21,21 +20,23 @@ dev = [
 [tool.poetry]
 package-mode = false
 
+# Keep UV configuration independent of a parent LNbits checkout.
+[tool.uv]
+
 [tool.mypy]
 exclude = "(nostr/*)"
+plugins = ["pydantic.mypy"]
+
+# SQLAlchemy 1.4 does not bundle type information.
 [[tool.mypy.overrides]]
-module = [
-  "lnbits.*",
-  "lnurl.*",
-  "loguru.*",
-  "fastapi.*",
-  "pydantic.*",
-  "pyqrcode.*",
-  "shortuuid.*",
-  "sqlalchemy.*",
-  "httpx.*",
-]
-ignore_missing_imports = "True"
+module = ["sqlalchemy.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
 
 [tool.pytest.ini_options]
 log_cli = false
@@ -45,7 +46,6 @@ testpaths = [
 
 [tool.black]
 line-length = 88
-target-version = ["py310"]
 
 [tool.ruff]
 # Same as Black. + 10% rule of black
@@ -67,8 +67,7 @@ exclude = [
 # RUF - ruff
 # B - bugbear
 select = ["F", "E", "W", "I", "A", "C", "N", "UP", "RUF", "B"]
-# UP007: pyupgrade: use X | Y instead of Optional. (python3.10)
-ignore = ["C901", "UP007"]
+ignore = ["C901"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -80,6 +79,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # needed for pydantic
 [tool.ruff.lint.pep8-naming]
 classmethod-decorators = [
+    "validator",
     "root_validator",
 ]
 
