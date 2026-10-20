@@ -168,6 +168,9 @@ async def test_creation_response_respects_key_type(client, kind):
     )
     assert response.status_code == 200, response.text
     data = response.json()
+    created_at = datetime.fromisoformat(data["timestamp"])
+    assert created_at.utcoffset() == timedelta(0)
+    assert abs((datetime.now(timezone.utc) - created_at).total_seconds()) < 5
     stored = await crud.get_charge(data["id"])
     assert stored and stored.webhook_secret
     assert len(stored.webhook_secret) == 64

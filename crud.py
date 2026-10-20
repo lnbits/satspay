@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from secrets import token_hex
 
 from lnbits.core.services import create_invoice
@@ -26,7 +26,7 @@ async def create_charge(
 
     charge = Charge(
         id=urlsafe_short_hash(),
-        timestamp=datetime.now(),
+        timestamp=datetime.now(timezone.utc),
         user=user,
         onchainaddress=onchainaddress,
         payment_request=None,
