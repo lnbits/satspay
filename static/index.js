@@ -47,7 +47,9 @@ window.PageSatspay = {
     currencies() {
       return [
         'satoshis',
-        ...(this.g.allowedCurrencies || this.g.currencies || [])
+        ...(this.g.allowedCurrencies.length > 0
+          ? this.g.allowedCurrencies
+          : this.g.currencies)
       ]
     },
     chargesColumns() {
