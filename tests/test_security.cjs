@@ -115,3 +115,16 @@ test('websocket completion redirects reject legacy script URLs', async () => {
   })
   assert.equal(navigation, 'https://merchant.example/complete')
 })
+
+test('currencies use the full list unless the operator restricts it', () => {
+  const currencies = load('index.js').window.PageSatspay.computed.currencies
+  for (const [allowedCurrencies, expected] of [
+    [[], ['satoshis', 'USD', 'EUR']],
+    [['EUR'], ['satoshis', 'EUR']]
+  ]) {
+    const values = currencies.call({
+      g: {allowedCurrencies, currencies: ['USD', 'EUR']}
+    })
+    assert.deepEqual([...values], expected)
+  }
+})
