@@ -63,7 +63,8 @@ def charge():
 def state(monkeypatch):
     monkeypatch.setattr(db_module, "DB_TYPE", db_module.SQLITE)
     monkeypatch.setattr(settings, "lnbits_callback_url_rules", [])
-    monkeypatch.setattr(settings, "lnbits_callback_allow_private_ips", False)
+    if hasattr(settings, "lnbits_callback_allow_private_ips"):
+        monkeypatch.setattr(settings, "lnbits_callback_allow_private_ips", False)
     monkeypatch.setattr(settings, "lnbits_running", True)
     tasks.tracked_addresses.clear()
     tasks.public_ws_listeners.clear()
@@ -797,3 +798,19 @@ async def test_onchain_prunes_once_per_message(monkeypatch):
     await tasks.wait_for_onchain()
     assert handle.await_count == 2
     prune.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_missing_private_ip_setting_still_blocks_internal_targets(
+    charge, monkeypatch
+):
+    monkeypatch.delattr(settings, "lnbits_callback_allow_private_ips", raising=False)
+    monkeypatch.setattr(
+        helpers,
+        "_resolve_webhook_host",
+        AsyncMock(return_value=[ipaddress.ip_address("127.0.0.1")]),
+    )
+    client = Mock()
+    monkeypatch.setattr(helpers.httpx, "AsyncClient", client)
+    assert not (await helpers.call_webhook(charge))["webhook_success"]
+    client.assert_not_called()

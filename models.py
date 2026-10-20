@@ -60,7 +60,7 @@ class CreateCharge(BaseModel):
     @field_validator("webhook", "completelink")
     @classmethod
     def validate_url(cls, value):
-        return _http_url(value)
+        return validate_http_url(value)
 
     @field_validator("extra")
     @classmethod
@@ -162,7 +162,7 @@ class Charge(BaseModel):
     @property
     def safe_completelink(self):
         try:
-            return _http_url(self.completelink)
+            return validate_http_url(self.completelink)
         except ValueError:
             return None
 
@@ -185,7 +185,7 @@ class OnchainBalance(BaseModel):
     txids: list[str]
 
 
-def _http_url(value: str | None) -> str | None:
+def validate_http_url(value: str | None) -> str | None:
     if not value:
         return None
     url = urlsplit(value)
