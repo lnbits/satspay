@@ -4,7 +4,12 @@ from fastapi import APIRouter
 from loguru import logger
 
 from .crud import db
-from .tasks import restart_address_tracking, wait_for_onchain, wait_for_paid_invoices
+from .tasks import (
+    expire_address_tracking,
+    restart_address_tracking,
+    wait_for_onchain,
+    wait_for_paid_invoices,
+)
 from .views import satspay_generic_router
 from .views_api import satspay_api_router
 from .views_api_themes import satspay_theme_router
@@ -42,7 +47,10 @@ def satspay_start():
         "ext_satspay_paid_invoices", wait_for_paid_invoices
     )
     onchain_task = create_permanent_unique_task("ext_satspay_onchain", wait_for_onchain)
-    scheduled_tasks.extend([paid_invoices_task, onchain_task])
+    expiry_task = create_permanent_unique_task(
+        "ext_satspay_expire_addresses", expire_address_tracking
+    )
+    scheduled_tasks.extend([paid_invoices_task, onchain_task, expiry_task])
     restart_websocket_task()
     create_unique_task(
         "ext_satspay_restart_address_tracking", restart_address_tracking()

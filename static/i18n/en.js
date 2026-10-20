@@ -24,6 +24,7 @@ window.i18n.global.mergeLocaleMessage('en', {
     completed_link: 'Completed Link',
     webhook: 'Webhook',
     webhook_response: 'Webhook Response',
+    webhook_secret: 'Webhook signing secret',
     no_response_yet: 'no response yet',
     details: 'Details',
     check_charge_balance: 'Check charge balance',

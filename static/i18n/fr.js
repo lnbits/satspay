@@ -24,6 +24,7 @@ window.i18n.global.mergeLocaleMessage('fr', {
     completed_link: 'Lien de confirmation',
     webhook: 'Webhook',
     webhook_response: 'Réponse webhook',
+    webhook_secret: 'Secret de signature du webhook',
     no_response_yet: 'pas encore de réponse',
     details: 'Détails',
     check_charge_balance: 'Vérifier le solde du paiement',

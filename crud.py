@@ -1,4 +1,5 @@
 from datetime import datetime
+from secrets import token_hex
 
 from lnbits.core.services import create_invoice
 from lnbits.db import Database
@@ -38,6 +39,7 @@ async def create_charge(
         onchainwallet=data.onchainwallet,
         lnbitswallet=data.lnbitswallet,
         webhook=data.webhook,
+        webhook_secret=token_hex(32) if data.webhook else None,
         completelink=data.completelink,
         completelinktext=data.completelinktext,
         time=data.time,
@@ -69,8 +71,12 @@ async def create_charge(
 
 
 async def update_charge(charge: Charge) -> Charge:
-    await db.update("satspay.charges", charge)
-    return charge
+    await db.update(
+        "satspay.charges",
+        charge,
+        "WHERE id = :id AND (paid IS NOT TRUE OR :paid = true)",
+    )
+    return await get_charge(charge.id) or charge
 
 
 async def get_charge(charge_id: str) -> Charge | None:
@@ -122,7 +128,7 @@ async def create_theme(data: CreateSatsPayTheme, user_id: str) -> SatsPayTheme:
 
 
 async def update_theme(theme: SatsPayTheme) -> SatsPayTheme:
-    await db.update("satspay.themes", theme, "css_id = :css_id")
+    await db.update("satspay.themes", theme, "WHERE css_id = :css_id")
     return theme
 
 

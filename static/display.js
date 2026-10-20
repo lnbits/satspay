@@ -1,3 +1,14 @@
+const satspayHttpUrl = value => {
+  try {
+    const url = new URL(value)
+    if (!['http:', 'https:'].includes(url.protocol)) return null
+    if (!url.hostname || url.username || url.password) return null
+    return url.href
+  } catch {
+    return null
+  }
+}
+
 const padString = num => num.toString().padStart(2, '0')
 
 const secondsToTime = seconds => {
@@ -13,12 +24,15 @@ const progress = (startSeconds, currentSeconds) => {
 
 const mapCharge = (obj, oldObj = {}) => {
   let charge = {...oldObj, ...obj}
+  charge.completelink = satspayHttpUrl(charge.completelink)
   charge.displayUrl = ['/satspay/', obj.id].join('')
   charge.expanded = oldObj.expanded || false
-  charge.extra =
-    charge.extra && typeof charge.extra == 'string'
-      ? JSON.parse(charge.extra)
-      : charge.extra
+  try {
+    charge.extra =
+      typeof charge.extra === 'string' ? JSON.parse(charge.extra) : charge.extra
+  } catch {
+    charge.extra = null
+  }
   const now = new Date().getTime() / 1000
   const then = new Date(charge.timestamp).getTime() / 1000
   const chargeTimeSeconds = charge.time * 60
@@ -240,13 +254,14 @@ window.PageSatspayPublic = {
         this.charge.balance = res.balance
         this.charge.pending = res.pending
         this.charge.paid = res.paid
-        this.charge.completelink = res.completelink
+        this.charge.completelink = satspayHttpUrl(res.completelink)
         if (this.charge.paid) {
           this.charge.progress = 1
           this.charge.paid = true
           if (this.charge.completelink) {
             setTimeout(() => {
-              window.location.href = this.charge.completelink
+              const url = satspayHttpUrl(this.charge.completelink)
+              if (url) window.location.href = url
             }, 5000)
           }
           this.$q.notify({
