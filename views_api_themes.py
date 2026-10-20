@@ -28,7 +28,7 @@ async def api_themes_save(
     theme = SatsPayTheme(
         css_id=css_id,
         user=user.id,
-        **data.dict(),
+        **data.model_dump(),
     )
     return await update_theme(theme)
 
