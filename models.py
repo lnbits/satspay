@@ -14,19 +14,19 @@ class SatspaySettings(BaseModel):
 
 
 class CreateCharge(BaseModel):
-    onchainwallet: str = Query(None)
-    lnbitswallet: str = Query(None)
-    name: str = Query(None)
+    onchainwallet: str | None = Query(None)
+    lnbitswallet: str | None = Query(None)
+    name: str | None = Query(None)
     description: str = Query(...)
-    webhook: str = Query(None)
-    completelink: str = Query(None)
+    webhook: str | None = Query(None)
+    completelink: str | None = Query(None)
     completelinktext: str = Query("Back to Merchant")
     time: int = Query(..., ge=1)
     amount: int | None = Query(None, ge=1)
     zeroconf: bool = Query(False)
     fasttrack: bool = Query(False)
     custom_css: str | None = Query(None)
-    currency: str = Query(None)
+    currency: str | None = Query(None)
     currency_amount: float | None = Query(None)
     extra: str | None = Query(None)
 
@@ -88,7 +88,7 @@ class Charge(BaseModel):
             "paid",
             "completelinktext",
         ]
-        c = {k: v for k, v in self.dict().items() if k in public_keys}
+        c = {k: v for k, v in self.model_dump().items() if k in public_keys}
         c["paid"] = self.paid_fasttrack
         c["timestamp"] = self.timestamp.isoformat()
         if self.paid_fasttrack:

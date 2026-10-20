@@ -19,13 +19,13 @@ async def call_webhook(charge: Charge):
                 r = await client.request(
                     method="GET",
                     url=charge.webhook,
-                    content=charge.json(),
+                    content=charge.model_dump_json(),
                     timeout=10,
                 )
             else:
                 r = await client.post(
                     url=charge.webhook,
-                    json=charge.json(),
+                    json=charge.model_dump_json(),
                     timeout=10,
                 )
             r.raise_for_status()
