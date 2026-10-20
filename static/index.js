@@ -2,10 +2,12 @@ const mapCharge = (obj, oldObj = {}) => {
   let charge = {...oldObj, ...obj}
   charge.displayUrl = ['/satspay/', obj.id].join('')
   charge.expanded = oldObj.expanded || false
-  charge.extra =
-    charge.extra && typeof charge.extra == 'string'
-      ? JSON.parse(charge.extra)
-      : charge.extra
+  try {
+    charge.extra =
+      typeof charge.extra === 'string' ? JSON.parse(charge.extra) : charge.extra
+  } catch {
+    charge.extra = null
+  }
   const now = new Date().getTime() / 1000
   const then = new Date(charge.timestamp).getTime() / 1000
   const chargeTimeSeconds = charge.time * 60
@@ -45,7 +47,9 @@ window.PageSatspay = {
     currencies() {
       return [
         'satoshis',
-        ...(this.g.allowedCurrencies || this.g.currencies || [])
+        ...(this.g.allowedCurrencies.length > 0
+          ? this.g.allowedCurrencies
+          : this.g.currencies)
       ]
     },
     chargesColumns() {
@@ -198,6 +202,16 @@ window.PageSatspay = {
     }
   },
   methods: {
+    safeHttpUrl(value) {
+      try {
+        const url = new URL(value)
+        if (!['http:', 'https:'].includes(url.protocol)) return null
+        if (!url.hostname || url.username || url.password) return null
+        return url.href
+      } catch {
+        return null
+      }
+    },
     cancelThemes() {
       this.formDialogCharge.data.custom_css = ''
       this.formDialogThemes.show = false
@@ -291,7 +305,7 @@ window.PageSatspay = {
       this.formDialogCharge.data.custom_css =
         this.formDialogCharge.data.custom_css?.id
       const data = this.formDialogCharge.data
-      const wallet = this.g.user.wallets[0].inkey
+      const wallet = this.g.user.wallets[0].adminkey
       data.amount = parseInt(data.amount)
       data.time = parseInt(data.time)
       data.lnbitswallet = data.lnbits ? data.lnbitswallet : null
@@ -399,7 +413,7 @@ window.PageSatspay = {
     sendWebhook(chargeId) {
       LNbits.api
         .request(
-          'GET',
+          'POST',
           `/satspay/api/v1/charge/webhook/${chargeId}`,
           this.g.user.wallets[0].adminkey
         )
