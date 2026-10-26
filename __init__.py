@@ -4,7 +4,12 @@ from fastapi import APIRouter
 from loguru import logger
 
 from .crud import db
-from .tasks import restart_address_tracking, wait_for_onchain, wait_for_paid_invoices
+from .tasks import (
+    restart_address_tracking,
+    stop_onchain_polling,
+    wait_for_onchain,
+    wait_for_paid_invoices,
+)
 from .views import satspay_generic_router
 from .views_api import satspay_api_router
 from .views_api_themes import satspay_theme_router
@@ -31,6 +36,7 @@ def satspay_stop():
             task.cancel()
         except Exception as ex:
             logger.warning(ex)
+    stop_onchain_polling()
     if websocket_task:
         websocket_task.cancel()
 
