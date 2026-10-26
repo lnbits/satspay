@@ -11,6 +11,8 @@ from .crud import get_or_create_satspay_settings
 ws_receive_queue: asyncio.Queue[dict] = asyncio.Queue()
 ws_send_queue: asyncio.Queue[dict] = asyncio.Queue()
 
+tracked_addresses: list[str] = []
+
 websocket_task: asyncio.Task | None = None
 
 
@@ -37,6 +39,13 @@ async def producer_handler(websocket):
         await websocket.send(message)
 
 
+def subscription_messages() -> list[dict]:
+    messages: list[dict] = [{"action": "init"}]
+    if tracked_addresses:
+        messages.append({"track-addresses": list(tracked_addresses)})
+    return messages
+
+
 async def websocket_handler():
     satspay_settings = await get_or_create_satspay_settings()
     uri = f"{satspay_settings.mempool_url}/api/v1/ws".replace("http", "ws")
@@ -44,6 +53,8 @@ async def websocket_handler():
     async with connect(uri) as websocket:
         logger.info(f"websocket_handler: Connected to {uri}")
         consumer_task = asyncio.create_task(consumer_handler(websocket))
+        for message in subscription_messages():
+            await websocket.send(json.dumps(message))
         producer_task = asyncio.create_task(producer_handler(websocket))
         _, pending = await asyncio.wait(
             [consumer_task, producer_task],
