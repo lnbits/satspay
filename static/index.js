@@ -48,6 +48,31 @@ window.PageSatspay = {
         ...(this.g.allowedCurrencies || this.g.currencies || [])
       ]
     },
+    onchainWalletOptions() {
+      const core = this.coreOnchainWallets.map(wallet => ({
+        label:
+          `LNbits: ${wallet.name}` +
+          (wallet.status === 'ready'
+            ? ''
+            : ` (${this.$t('satspay.onchain_wallet_not_ready')})`),
+        value: `core:${wallet.id}`
+      }))
+      const watchonly = this.walletLinks.map(wallet => ({
+        label: `Watchonly: ${wallet.label}`,
+        value: wallet.id
+      }))
+      return [...core, ...watchonly]
+    },
+    selectedCoreWallet() {
+      if (!this.onchainwallet?.startsWith('core:')) return null
+      const walletId = this.onchainwallet.slice('core:'.length)
+      return this.coreOnchainWallets.find(w => w.id === walletId) || null
+    },
+    selectedCoreWalletNotReady() {
+      return (
+        !!this.selectedCoreWallet && this.selectedCoreWallet.status !== 'ready'
+      )
+    },
     chargesColumns() {
       return [
         {
@@ -142,13 +167,13 @@ window.PageSatspay = {
         {
           type: 'str',
           description:
-            'Network used by OnchainWallet extension Wallet. default: `Mainnet`, or `Testnet` for testnet',
+            'Network used for onchain wallets. Core and watchonly wallets must match this network. Use `Mainnet`, `Testnet`, or `Testnet4`.',
           name: 'network'
         },
         {
           type: 'str',
           description:
-            'Mempool API URL. default: `https://mempool.space`, use `https://mempool.space/testnet` for testnet',
+            'Mempool API URL for the network above. Use `https://mempool.space`, `https://mempool.space/testnet`, or `https://mempool.space/testnet4`.',
           name: 'mempool_url'
         },
         {
@@ -162,6 +187,8 @@ window.PageSatspay = {
       network: 'Mainnet',
       balance: null,
       walletLinks: [],
+      coreOnchainWallets: [],
+      coreOnchainWalletsLoaded: false,
       chargeLinks: [],
       themeLinks: [],
       themeOptions: [],
@@ -205,7 +232,7 @@ window.PageSatspay = {
     cancelCharge() {
       this.formDialogCharge.data.description = ''
       this.formDialogCharge.data.onchain = false
-      this.formDialogCharge.data.onchainwallet = ''
+      this.onchainwallet = ''
       this.formDialogCharge.data.zeroconf = false
       this.formDialogCharge.data.lnbitswallet = ''
       this.formDialogCharge.data.time = null
@@ -232,7 +259,52 @@ window.PageSatspay = {
         LNbits.utils.notifyApiError(error)
       }
     },
+    async getPublicSettings() {
+      try {
+        const {data} = await LNbits.api.request(
+          'GET',
+          '/satspay/api/v1/settings/public'
+        )
+        this.network = data.network
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+    async openChargeDialog() {
+      this.formDialogCharge.show = true
+      this.coreOnchainWallets = []
+      this.coreOnchainWalletsLoaded = false
+      this.walletLinks = []
+      await this.getPublicSettings()
+      await Promise.all([this.getCoreOnchainWallets(), this.getWalletLinks()])
+    },
+    async getCoreOnchainWallets() {
+      try {
+        const {data} = await LNbits.api.request(
+          'GET',
+          '/satspay/api/v1/onchain-wallets',
+          this.g.user.wallets[0].inkey
+        )
+        this.coreOnchainWallets = data.filter(w => w.network === this.network)
+        this.coreOnchainWalletsLoaded = true
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+    createOnchainWallet() {
+      this.g.newWalletType = 'onchain'
+    },
+    openOnchainWallet(walletId) {
+      this.$router.push({path: '/wallet', query: {wal: walletId}})
+    },
     getOnchainWalletName(walletId) {
+      if (walletId?.startsWith('core:')) {
+        const id = walletId.slice('core:'.length)
+        const core = this.coreOnchainWallets.find(w => w.id === id)
+        if (core) return `LNbits: ${core.name}`
+        const wallet = this.g.user.wallets.find(w => w.id === id)
+        return wallet ? wallet.name : 'unknown'
+      }
       const wallet = this.walletLinks.find(w => w.id === walletId)
       if (!wallet) return 'unknown'
       return wallet.label
@@ -295,7 +367,7 @@ window.PageSatspay = {
       data.amount = parseInt(data.amount)
       data.time = parseInt(data.time)
       data.lnbitswallet = data.lnbits ? data.lnbitswallet : null
-      data.onchainwallet = data.onchain ? this.onchainwallet?.id : null
+      data.onchainwallet = data.onchain ? this.onchainwallet : null
       this.createCharge(wallet, data)
     },
     updateformDialog(themeId) {
@@ -364,6 +436,7 @@ window.PageSatspay = {
         )
         this.chargeLinks.unshift(mapCharge(resp.data))
         this.formDialogCharge.show = false
+        this.onchainwallet = ''
         this.formDialogCharge.data = {
           onchain: false,
           zeroconf: false,
@@ -462,17 +535,12 @@ window.PageSatspay = {
     }
   },
   async created() {
-    try {
-      const {data} = await LNbits.api.request(
-        'GET',
-        '/satspay/api/v1/settings/public'
-      )
-      this.network = data.network
-    } catch (e) {}
+    await this.getPublicSettings()
     if (this.g.user.admin) {
       await this.getThemes()
     }
     await this.getCharges()
+    await this.getCoreOnchainWallets()
     await this.getWalletLinks()
   }
 }

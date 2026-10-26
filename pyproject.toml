@@ -80,6 +80,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.ruff.lint.pep8-naming]
 classmethod-decorators = [
     "root_validator",
+    "validator",
 ]
 
 # Ignore unused imports in __init__.py files.
