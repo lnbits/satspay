@@ -7,7 +7,7 @@
             unelevated
             color="primary"
             :label="$t('satspay.new_charge')"
-            @click="formDialogCharge.show = true"
+            @click="openChargeDialog"
           ></q-btn>
 
           <q-btn
@@ -488,7 +488,7 @@
 
           <div class="row">
             <div class="col">
-              <div v-if="walletLinks.length > 0">
+              <div v-if="onchainWalletOptions.length > 0">
                 <q-checkbox
                   v-model="formDialogCharge.data.onchain"
                   :label="$t('satspay.onchain')"
@@ -514,15 +514,50 @@
             </div>
           </div>
 
+          <q-btn
+            v-if="coreOnchainWalletsLoaded && coreOnchainWallets.length === 0"
+            flat
+            dense
+            color="primary"
+            class="q-mt-sm"
+            :label="$t('satspay.create_onchain_wallet')"
+            @click="createOnchainWallet"
+          ></q-btn>
+
           <div v-if="formDialogCharge.data.onchain">
             <q-select
               filled
               dense
               emit-value
+              map-options
               v-model="onchainwallet"
-              :options="walletLinks"
+              :options="onchainWalletOptions"
               :label="$t('satspay.onchain_wallet')"
             ></q-select>
+            <q-banner
+              v-if="selectedCoreWalletNotReady"
+              dense
+              class="bg-orange-2 text-orange-9 q-mt-sm"
+            >
+              <div
+                v-text="
+                  selectedCoreWallet.status === 'setup'
+                    ? $t('satspay.onchain_wallet_setup_required')
+                    : $t('satspay.onchain_wallet_backup_required')
+                "
+              ></div>
+              <q-btn
+                flat
+                dense
+                color="primary"
+                :label="
+                  selectedCoreWallet.status === 'setup'
+                    ? $t('satspay.setup_onchain_wallet')
+                    : $t('satspay.backup_onchain_wallet')
+                "
+                @click="openOnchainWallet(selectedCoreWallet.id)"
+              ></q-btn>
+            </q-banner>
             <q-item
               tag="label"
               v-ripple
@@ -621,7 +656,9 @@
               :disable="
                 formDialogCharge.data.time == null ||
                 (formDialogCharge.data.amount == null &&
-                  formDialogCharge.data.currency_amount == null)
+                  formDialogCharge.data.currency_amount == null) ||
+                (formDialogCharge.data.onchain &&
+                  (!onchainwallet || selectedCoreWalletNotReady))
               "
               type="submit"
               :label="$t('satspay.create_charge')"

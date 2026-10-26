@@ -24,10 +24,15 @@ from .crud import (
 from .helpers import (
     call_webhook,
     check_charge_balance,
+    fetch_core_onchain_address,
     fetch_onchain_address,
     fetch_onchain_config_network,
+    get_core_onchain_wallets,
+    parse_onchain_wallet_ref,
+    require_core_onchain_wallet,
+    validate_mempool_url,
 )
-from .models import Charge, CreateCharge, SatspaySettings
+from .models import Charge, CoreOnchainWallet, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
 from .websocket_handler import restart_websocket_task
 
@@ -49,6 +54,13 @@ async def _get_wallet_network(wallet: Wallet) -> str:
 @satspay_api_router.get("/api/v1")
 async def api_enabled() -> dict:
     return {"message": "SatsPay API enabled."}
+
+
+@satspay_api_router.get("/api/v1/onchain-wallets")
+async def api_get_core_onchain_wallets(
+    key_type: WalletTypeInfo = Depends(require_invoice_key),
+) -> list[CoreOnchainWallet]:
+    return await get_core_onchain_wallets(key_type.wallet.user)
 
 
 @satspay_api_router.post("/api/v1/charge")
@@ -82,28 +94,48 @@ async def api_charge_create(
             )
     if data.onchainwallet:
         settings = await get_or_create_satspay_settings()
-        network = await _get_wallet_network(key_type.wallet)
-        if network != settings.network:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Onchain network mismatch. {network} != {settings.network}",
-            )
         try:
-            new_address = await fetch_onchain_address(
-                data.onchainwallet, key_type.wallet.inkey
-            )
-            start_onchain_listener(new_address)
-            return await create_charge(
-                user=key_type.wallet.user,
-                onchainaddress=new_address,
-                data=data,
-            )
+            validate_mempool_url(settings.network, settings.mempool_url)
+            source, wallet_id = parse_onchain_wallet_ref(data.onchainwallet)
+            onchain_wallet = None
+            network: str
+            if source == "core":
+                onchain_wallet = await require_core_onchain_wallet(
+                    wallet_id, key_type.wallet.user
+                )
+                network = onchain_wallet.onchain_network or "Mainnet"
+            else:
+                network = await _get_wallet_network(key_type.wallet)
+            if network != settings.network:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=f"Onchain network mismatch. {network} != {settings.network}",
+                )
+            if onchain_wallet:
+                new_address = await fetch_core_onchain_address(onchain_wallet)
+            else:
+                new_address = await fetch_onchain_address(
+                    wallet_id, key_type.wallet.inkey
+                )
+        except HTTPException:
+            raise
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST, detail=str(exc)
+            ) from exc
         except Exception as exc:
-            logger.error(f"Error fetching onchain config: {exc}")
+            logger.error(f"Error fetching onchain address: {exc}")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail="Error fetching onchain address.",
             ) from exc
+        charge = await create_charge(
+            user=key_type.wallet.user,
+            onchainaddress=new_address,
+            data=data,
+        )
+        start_onchain_listener(new_address)
+        return charge
     return await create_charge(user=key_type.wallet.user, data=data)
 
 

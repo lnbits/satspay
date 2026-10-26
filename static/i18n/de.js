@@ -20,6 +20,14 @@ window.i18n.global.mergeLocaleMessage('de', {
     id: 'ID',
     description: 'Beschreibung',
     onchain_wallet: 'Onchain-Wallet',
+    create_onchain_wallet: 'Onchain-Wallet erstellen',
+    onchain_wallet_not_ready: 'nicht bereit',
+    onchain_wallet_setup_required:
+      'Diese Onchain-Wallet ist noch nicht eingerichtet. Schließe die Einrichtung ab, bevor du Zahlungen annimmst.',
+    onchain_wallet_backup_required:
+      'Sichere diese Hot-Wallet, bevor du Zahlungen annimmst.',
+    setup_onchain_wallet: 'Wallet einrichten',
+    backup_onchain_wallet: 'Wallet sichern',
     lnbits_wallet: 'LNbits-Wallet',
     completed_link: 'Abgeschlossener Link',
     webhook: 'Webhook',
@@ -44,7 +52,7 @@ window.i18n.global.mergeLocaleMessage('de', {
     mins_valid: '*Gültigkeitsdauer in Minuten (max. 1440)',
     onchain: 'Onchain',
     onchain_wallet_tooltip:
-      'Die Onchain-Wallet-Erweiterung (Watch-Only) MUSS aktiviert sein und eine Wallet haben',
+      'Erstelle eine LNbits-Onchain-Wallet oder aktiviere die Onchain-Wallet-Erweiterung (Watch-Only) und füge eine Wallet hinzu',
     lnbits_wallet_label: 'LNbits-Wallet',
     zeroconf_label: 'Zeroconf (0-Bestätigungen) Zahlungen',
     zeroconf_desc:

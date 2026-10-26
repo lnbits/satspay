@@ -20,6 +20,14 @@ window.i18n.global.mergeLocaleMessage('en', {
     id: 'ID',
     description: 'Description',
     onchain_wallet: 'Onchain Wallet',
+    create_onchain_wallet: 'Create onchain wallet',
+    onchain_wallet_not_ready: 'not ready',
+    onchain_wallet_setup_required:
+      'This onchain wallet is not set up yet. Finish setup before accepting payments.',
+    onchain_wallet_backup_required:
+      'Back up this hot wallet before accepting payments.',
+    setup_onchain_wallet: 'Set up wallet',
+    backup_onchain_wallet: 'Back up wallet',
     lnbits_wallet: 'LNbits Wallet',
     completed_link: 'Completed Link',
     webhook: 'Webhook',
@@ -44,7 +52,7 @@ window.i18n.global.mergeLocaleMessage('en', {
     mins_valid: '*Mins valid for (max 1440)',
     onchain: 'Onchain',
     onchain_wallet_tooltip:
-      'Onchain Wallet (watch-only) extension MUST be activated and have a wallet',
+      'Create an LNbits onchain wallet, or activate the Onchain Wallet (watch-only) extension and add a wallet',
     lnbits_wallet_label: 'LNbits wallet',
     zeroconf_label: 'Zeroconf (0-conf) payments',
     zeroconf_desc:
