@@ -12,6 +12,7 @@ from .crud import (
     get_charge_by_onchain_address,
     get_pending_charges,
     update_charge,
+    update_pending_charge,
 )
 from .helpers import call_webhook, check_charge_balance
 from .models import Charge
@@ -151,23 +152,30 @@ async def _refresh_onchain_charge(address: str) -> bool:
         return False
     balance_before = charge.balance
     pending_before = charge.pending
+    extra_before = charge.extra
     charge = await check_charge_balance(charge, notify_webhook=False)
-    if (
-        charge.balance == balance_before
-        and charge.pending == pending_before
-        and not charge.paid
-    ):
+    balance_changed = (
+        charge.balance != balance_before
+        or charge.pending != pending_before
+        or charge.paid
+    )
+    if not balance_changed and charge.extra == extra_before:
         return True
-    await _notify_onchain_charge(charge)
+    if not await update_pending_charge(charge):
+        return False
+    if balance_changed:
+        await _notify_onchain_charge(charge)
     return not charge.paid
 
 
 async def _notify_onchain_charge(charge: Charge):
-    charge = await update_charge(charge)
     await send_success_websocket(charge)
     if charge.webhook:
         resp = await call_webhook(charge)
         charge.add_extra(resp)
-        await update_charge(charge)
+        if charge.paid:
+            await update_charge(charge)
+        else:
+            await update_pending_charge(charge)
     if charge.paid:
         logger.success(f"Charge {charge.id} paid.")

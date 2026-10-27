@@ -73,6 +73,24 @@ async def update_charge(charge: Charge) -> Charge:
     return charge
 
 
+async def update_pending_charge(charge: Charge) -> bool:
+    result = await db.execute(
+        """
+        UPDATE satspay.charges
+        SET balance = :balance, pending = :pending, paid = :paid, extra = :extra
+        WHERE id = :id AND paid = false
+        """,
+        {
+            "id": charge.id,
+            "balance": charge.balance,
+            "pending": charge.pending,
+            "paid": charge.paid,
+            "extra": charge.extra,
+        },
+    )
+    return result.rowcount == 1
+
+
 async def get_charge(charge_id: str) -> Charge | None:
     return await db.fetchone(
         "SELECT * FROM satspay.charges WHERE id = :id",
