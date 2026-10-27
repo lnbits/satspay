@@ -12,30 +12,32 @@ from .crud import (
     get_charge_by_onchain_address,
     get_pending_charges,
     update_charge,
+    update_pending_charge,
 )
-from .helpers import call_webhook, check_charge_balance, sum_transactions
+from .helpers import call_webhook, check_charge_balance
 from .models import Charge
-from .websocket_handler import ws_receive_queue, ws_send_queue
+from .websocket_handler import tracked_addresses, ws_receive_queue, ws_send_queue
 
-tracked_addresses: list[str] = []
 public_ws_listeners: dict[str, list[WebSocket]] = {}
+poll_tasks: dict[str, asyncio.Task] = {}
+
+ONCHAIN_POLL_INTERVAL = 30
 
 
 async def restart_address_tracking():
-    charges = await get_pending_charges()
-    for charge in charges:
-        if (
-            charge.onchainaddress
-            and charge.timestamp.timestamp() + charge.time * 60 > time.time()
-        ):
-            charge = await check_charge_balance(charge)
-            assert charge.onchainaddress
-            if charge.paid:
-                charge.add_extra({"payment_method": "onchain"})
-                await update_charge(charge)
-                logger.success(f"Charge {charge.id} marked as paid.")
-                continue
-            start_onchain_listener(charge.onchainaddress)
+    for charge in await get_pending_charges():
+        if not charge.onchainaddress:
+            continue
+        if charge.timestamp.timestamp() + charge.time * 60 <= time.time():
+            continue
+        start_onchain_listener(charge.onchainaddress)
+        try:
+            if not await _refresh_onchain_charge(charge.onchainaddress):
+                stop_onchain_listener(charge.onchainaddress)
+        except Exception as exc:
+            logger.warning(
+                f"Onchain charge refresh failed for {charge.onchainaddress}: {exc!s}"
+            )
 
 
 async def wait_for_paid_invoices():
@@ -92,46 +94,88 @@ def start_onchain_listener(address: str):
         return
     tracked_addresses.append(address)
     logger.debug(f"start_onchain_listener ({len(tracked_addresses)}")
-    ws_send_queue.put_nowait({"track-addresses": tracked_addresses})
+    ws_send_queue.put_nowait({"track-addresses": list(tracked_addresses)})
+    if address not in poll_tasks:
+        poll_tasks[address] = asyncio.create_task(_poll_charge(address))
 
 
 def stop_onchain_listener(address: str):
     if address in tracked_addresses:
         tracked_addresses.remove(address)
         logger.debug(f"stop_onchain_listener ({len(tracked_addresses)}")
-        ws_send_queue.put_nowait({"track-addresses": tracked_addresses})
+        ws_send_queue.put_nowait({"track-addresses": list(tracked_addresses)})
+    task = poll_tasks.pop(address, None)
+    if task and task is not asyncio.current_task():
+        task.cancel()
+
+
+def stop_onchain_polling():
+    for task in list(poll_tasks.values()):
+        task.cancel()
+    poll_tasks.clear()
+    tracked_addresses.clear()
 
 
 async def wait_for_onchain():
     while settings.lnbits_running:
         ws_message = await ws_receive_queue.get()
+        tracking_error = ws_message.get("track-addresses-error")
+        if tracking_error:
+            logger.warning(f"Onchain address tracking rejected: {tracking_error}")
         txs = ws_message.get("multi-address-transactions")
         if not txs:
             continue
-        for address, data in txs.items():
-            await _handle_ws_message(address, data)
+        for address in txs:
+            try:
+                if not await _refresh_onchain_charge(address):
+                    stop_onchain_listener(address)
+            except Exception as exc:
+                logger.warning(f"Onchain charge update failed for {address}: {exc!s}")
 
 
-async def _handle_ws_message(address: str, data: dict):
+async def _poll_charge(address: str):
+    while settings.lnbits_running:
+        await asyncio.sleep(ONCHAIN_POLL_INTERVAL)
+        try:
+            if not await _refresh_onchain_charge(address):
+                stop_onchain_listener(address)
+                return
+        except Exception as exc:
+            logger.warning(f"Onchain charge poll failed for {address}: {exc!s}")
+
+
+async def _refresh_onchain_charge(address: str) -> bool:
     charge = await get_charge_by_onchain_address(address)
-    assert charge, f"Charge with address `{address}` does not exist."
-    unconfirmed_balance = sum_transactions(address, data.get("mempool", []))
-    confirmed_balance = sum_transactions(address, data.get("confirmed", []))
-    unconfirmed_txids = [tx["txid"] for tx in data.get("mempool", [])]
-    confirmed_txids = [tx["txid"] for tx in data.get("confirmed", [])]
-    charge.add_extra({"txids": confirmed_txids + unconfirmed_txids})
-    if charge.zeroconf:
-        confirmed_balance += unconfirmed_balance
-    charge.balance = confirmed_balance
-    charge.pending = unconfirmed_balance
-    charge.paid = charge.balance >= charge.amount
-    if charge.paid:
-        charge.add_extra({"payment_method": "onchain"})
-        logger.success(f"Charge {charge.id} onchain paid.")
-        stop_onchain_listener(address)
-    charge = await update_charge(charge)
+    if not charge or charge.paid:
+        return False
+    if charge.timestamp.timestamp() + charge.time * 60 <= time.time():
+        return False
+    balance_before = charge.balance
+    pending_before = charge.pending
+    extra_before = charge.extra
+    charge = await check_charge_balance(charge, notify_webhook=False)
+    balance_changed = (
+        charge.balance != balance_before
+        or charge.pending != pending_before
+        or charge.paid
+    )
+    if not balance_changed and charge.extra == extra_before:
+        return True
+    if not await update_pending_charge(charge):
+        return False
+    if balance_changed:
+        await _notify_onchain_charge(charge)
+    return not charge.paid
+
+
+async def _notify_onchain_charge(charge: Charge):
     await send_success_websocket(charge)
     if charge.webhook:
         resp = await call_webhook(charge)
         charge.add_extra(resp)
-        await update_charge(charge)
+        if charge.paid:
+            await update_charge(charge)
+        else:
+            await update_pending_charge(charge)
+    if charge.paid:
+        logger.success(f"Charge {charge.id} paid.")
