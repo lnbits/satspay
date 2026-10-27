@@ -1,13 +1,15 @@
 import asyncio
+import sqlite3
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from lnbits.db import insert_query, model_to_dict, update_query
 from lnbits.settings import settings
 
-from .. import helpers, tasks, websocket_handler
+from .. import crud, helpers, migrations, tasks, websocket_handler
 from ..models import Charge, OnchainBalance
 
 
@@ -58,9 +60,14 @@ def refresh_mocks(monkeypatch):
         state.updated.append(charge)
         return charge
 
+    async def update_pending_charge(charge):
+        state.updated.append(charge)
+        return True
+
     monkeypatch.setattr(tasks, "get_charge_by_onchain_address", get_charge)
     monkeypatch.setattr(tasks, "check_charge_balance", check_charge_balance)
     monkeypatch.setattr(tasks, "update_charge", update_charge)
+    monkeypatch.setattr(tasks, "update_pending_charge", update_pending_charge)
     monkeypatch.setattr(tasks, "send_success_websocket", state.websocket)
     monkeypatch.setattr(tasks, "call_webhook", state.webhook)
     return state
@@ -134,6 +141,90 @@ def test_check_charge_balance_can_skip_webhook(monkeypatch):
     assert charge.pending == 20000
     assert charge.paid is True
     webhook.assert_not_called()
+
+
+def test_refresh_persists_replacement_txid_without_notification(refresh_mocks):
+    refresh_mocks.charge = make_charge(pending=10000, extra='{"txids": ["old"]}')
+    refresh_mocks.checked = make_charge(pending=10000, extra='{"txids": ["new"]}')
+
+    assert asyncio.run(tasks._refresh_onchain_charge("address")) is True
+    assert refresh_mocks.updated == [refresh_mocks.checked]
+    refresh_mocks.websocket.assert_not_called()
+    refresh_mocks.webhook.assert_not_called()
+
+
+@pytest.mark.parametrize("payment_during", ["balance_fetch", "webhook"])
+def test_refresh_preserves_concurrent_lightning_payment(monkeypatch, payment_during):
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    connection.execute("ATTACH ':memory:' AS satspay")
+
+    async def execute(query, values=None):
+        return connection.execute(query, values or {})
+
+    async def fetchone(query, values, model):
+        row = connection.execute(query, values).fetchone()
+        return model(**dict(row)) if row else None
+
+    async def update(table, charge):
+        await execute(update_query(table, charge), model_to_dict(charge))
+
+    db = SimpleNamespace(
+        execute=execute,
+        fetchone=fetchone,
+        update=update,
+        big_int="INTEGER",
+        timestamp_now="(strftime('%s', 'now'))",
+    )
+    monkeypatch.setattr(crud, "db", db)
+    websocket = AsyncMock()
+    webhook = AsyncMock()
+    monkeypatch.setattr(tasks, "send_success_websocket", websocket)
+    monkeypatch.setattr(tasks, "call_webhook", webhook)
+    monkeypatch.setattr(helpers, "get_standalone_payment", AsyncMock(return_value=None))
+    payment = SimpleNamespace(
+        extra={"tag": "charge", "charge": "charge"},
+        payment_hash="hash",
+        amount=20000000,
+    )
+
+    async def fetch_balance(address):
+        if payment_during == "balance_fetch":
+            await tasks.on_invoice_paid(payment)
+        return OnchainBalance(confirmed=0, unconfirmed=10000, txids=["partial"])
+
+    async def call_webhook(charge):
+        if payment_during == "webhook" and not charge.paid:
+            await tasks.on_invoice_paid(payment)
+        return {"webhook_success": True}
+
+    monkeypatch.setattr(helpers, "fetch_onchain_balance", fetch_balance)
+    webhook.side_effect = call_webhook
+
+    async def run():
+        try:
+            for name in sorted(vars(migrations)):
+                if name.startswith("m0"):
+                    await getattr(migrations, name)(db)
+            charge = make_charge(lnbitswallet="lightning", payment_hash="hash")
+            await execute(
+                insert_query("satspay.charges", charge), model_to_dict(charge)
+            )
+
+            await tasks._refresh_onchain_charge("address")
+
+            stored = await crud.get_charge(charge.id)
+            assert stored
+            assert stored.paid is True
+            assert stored.balance == charge.amount
+            assert '"payment_method": "lightning"' in (stored.extra or "")
+            expected_notifications = 1 if payment_during == "balance_fetch" else 2
+            assert webhook.await_count == expected_notifications
+            assert websocket.await_count == webhook.await_count
+        finally:
+            connection.close()
+
+    asyncio.run(run())
 
 
 def test_subscription_messages_include_init_and_addresses():
