@@ -5,7 +5,7 @@ from lnbits.core.crud import get_standalone_payment
 from lnbits.settings import settings
 from loguru import logger
 
-from .crud import get_or_create_satspay_settings
+from .crud import get_or_create_satspay_settings, update_charge
 from .models import Charge, OnchainBalance
 
 
@@ -114,9 +114,18 @@ async def check_charge_balance(charge: Charge) -> Charge:
 
     charge.paid = charge.balance >= charge.amount
 
+    if not charge.paid:
+        return charge
+
+    # Persist the settled state BEFORE firing the webhook so webhook handlers
+    # that re-fetch the charge (e.g. GET /satspay/api/v1/charge/{id}) observe
+    # it as paid. Mirrors the ordering in tasks._handle_ws_message.
+    charge = await update_charge(charge)
+
     if charge.webhook:
         resp = await call_webhook(charge)
         charge.add_extra(resp)
+        charge = await update_charge(charge)
 
     return charge
 

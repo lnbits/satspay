@@ -20,22 +20,49 @@ from .websocket_handler import ws_receive_queue, ws_send_queue
 tracked_addresses: list[str] = []
 public_ws_listeners: dict[str, list[WebSocket]] = {}
 
+# How often the on-chain balance is re-checked by REST as a fallback to the
+# mempool websocket. The websocket only tracks successfully while the number of
+# active addresses stays under mempool's per-connection limit, so this poll is
+# the reliable detection path.
+ONCHAIN_BALANCE_POLL_SECONDS = 120
+
 
 async def restart_address_tracking():
-    charges = await get_pending_charges()
-    for charge in charges:
-        if (
-            charge.onchainaddress
-            and charge.timestamp.timestamp() + charge.time * 60 > time.time()
-        ):
-            charge = await check_charge_balance(charge)
-            assert charge.onchainaddress
-            if charge.paid:
-                charge.add_extra({"payment_method": "onchain"})
-                await update_charge(charge)
-                logger.success(f"Charge {charge.id} marked as paid.")
-                continue
-            start_onchain_listener(charge.onchainaddress)
+    while settings.lnbits_running:
+        try:
+            charges = await get_pending_charges()
+        except Exception as exc:
+            logger.warning(f"Failed to load pending charges: {exc!s}")
+            await asyncio.sleep(ONCHAIN_BALANCE_POLL_SECONDS)
+            continue
+
+        logger.debug(
+            f"Onchain balance poll: {len(charges)} pending charges, "
+            f"{len(tracked_addresses)} tracked."
+        )
+
+        for charge in charges:
+            try:
+                if not charge.onchainaddress:
+                    continue
+                if charge.timestamp.timestamp() + charge.time * 60 <= time.time():
+                    # Expired: drop from ws tracking so stale addresses do not
+                    # consume mempool's per-connection address limit.
+                    stop_onchain_listener(charge.onchainaddress)
+                    continue
+                charge = await check_charge_balance(charge)
+                assert charge.onchainaddress
+                if charge.paid:
+                    charge.add_extra({"payment_method": "onchain"})
+                    await update_charge(charge)
+                    stop_onchain_listener(charge.onchainaddress)
+                    logger.success(f"Charge {charge.id} marked as paid.")
+                    continue
+                start_onchain_listener(charge.onchainaddress)
+            except Exception as exc:
+                logger.warning(f"Error checking charge {charge.id}: {exc!s}")
+
+        await asyncio.sleep(ONCHAIN_BALANCE_POLL_SECONDS)
 
 
 async def wait_for_paid_invoices():
