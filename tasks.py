@@ -1,10 +1,11 @@
-import asyncio
 import time
 
 from fastapi import WebSocket
 from lnbits.core.models import Payment
-from lnbits.settings import settings
-from lnbits.tasks import register_invoice_listener
+from lnbits.task_manager import task_manager  # pyright: ignore[reportMissingImports]
+from lnbits.utils.electrum import (  # pyright: ignore[reportMissingImports]
+    OnchainAddressEvent,
+)
 from loguru import logger
 
 from .crud import (
@@ -13,12 +14,13 @@ from .crud import (
     get_pending_charges,
     update_charge,
 )
-from .helpers import call_webhook, check_charge_balance, sum_transactions
+from .helpers import call_webhook
 from .models import Charge
-from .websocket_handler import ws_receive_queue, ws_send_queue
 
-tracked_addresses: list[str] = []
+TASK_NAME = "ext_satspay"
+
 public_ws_listeners: dict[str, list[WebSocket]] = {}
+_satspay_tracked_addresses: set[str] = set()
 
 
 async def restart_address_tracking():
@@ -28,23 +30,23 @@ async def restart_address_tracking():
             charge.onchainaddress
             and charge.timestamp.timestamp() + charge.time * 60 > time.time()
         ):
-            charge = await check_charge_balance(charge)
-            assert charge.onchainaddress
-            if charge.paid:
-                charge.add_extra({"payment_method": "onchain"})
-                await update_charge(charge)
-                logger.success(f"Charge {charge.id} marked as paid.")
-                continue
-            start_onchain_listener(charge.onchainaddress)
+            satspay_track_address(charge.onchainaddress)
 
 
-async def wait_for_paid_invoices():
-    invoice_queue = asyncio.Queue()
-    register_invoice_listener(invoice_queue, "ext_satspay")
+def satspay_track_address(address: str) -> None:
+    _satspay_tracked_addresses.add(address)
+    task_manager.track_address(address, TASK_NAME)
 
-    while settings.lnbits_running:
-        payment = await invoice_queue.get()
-        await on_invoice_paid(payment)
+
+def satspay_untrack_address(address: str) -> None:
+    _satspay_tracked_addresses.discard(address)
+    task_manager.untrack_address(address, TASK_NAME)
+
+
+def satspay_untrack_all_addresses() -> None:
+    for address in list(_satspay_tracked_addresses):
+        task_manager.untrack_address(address, TASK_NAME)
+    _satspay_tracked_addresses.clear()
 
 
 async def send_success_websocket(charge: Charge):
@@ -87,48 +89,24 @@ async def on_invoice_paid(payment: Payment) -> None:
             await update_charge(charge)
 
 
-def start_onchain_listener(address: str):
-    if address in tracked_addresses:
+async def on_address_event(event: OnchainAddressEvent) -> None:
+    charge = await get_charge_by_onchain_address(event.address)
+    if not charge:
+        logger.warning(f"No charge found for address {event.address}")
         return
-    tracked_addresses.append(address)
-    logger.debug(f"start_onchain_listener ({len(tracked_addresses)}")
-    ws_send_queue.put_nowait({"track-addresses": tracked_addresses})
 
-
-def stop_onchain_listener(address: str):
-    if address in tracked_addresses:
-        tracked_addresses.remove(address)
-        logger.debug(f"stop_onchain_listener ({len(tracked_addresses)}")
-        ws_send_queue.put_nowait({"track-addresses": tracked_addresses})
-
-
-async def wait_for_onchain():
-    while settings.lnbits_running:
-        ws_message = await ws_receive_queue.get()
-        txs = ws_message.get("multi-address-transactions")
-        if not txs:
-            continue
-        for address, data in txs.items():
-            await _handle_ws_message(address, data)
-
-
-async def _handle_ws_message(address: str, data: dict):
-    charge = await get_charge_by_onchain_address(address)
-    assert charge, f"Charge with address `{address}` does not exist."
-    unconfirmed_balance = sum_transactions(address, data.get("mempool", []))
-    confirmed_balance = sum_transactions(address, data.get("confirmed", []))
-    unconfirmed_txids = [tx["txid"] for tx in data.get("mempool", [])]
-    confirmed_txids = [tx["txid"] for tx in data.get("confirmed", [])]
-    charge.add_extra({"txids": confirmed_txids + unconfirmed_txids})
-    if charge.zeroconf:
-        confirmed_balance += unconfirmed_balance
-    charge.balance = confirmed_balance
-    charge.pending = unconfirmed_balance
+    charge.add_extra({"txids": event.txids})
+    charge.balance = (
+        event.confirmed + event.unconfirmed if charge.zeroconf else event.confirmed
+    )
+    charge.pending = event.unconfirmed
     charge.paid = charge.balance >= charge.amount
+
     if charge.paid:
         charge.add_extra({"payment_method": "onchain"})
         logger.success(f"Charge {charge.id} onchain paid.")
-        stop_onchain_listener(address)
+        satspay_untrack_address(event.address)
+
     charge = await update_charge(charge)
     await send_success_websocket(charge)
     if charge.webhook:

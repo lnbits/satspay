@@ -1,14 +1,20 @@
-import asyncio
-
 from fastapi import APIRouter
-from loguru import logger
+from lnbits.task_manager import (  # pyright: ignore[reportMissingImports]
+    Task,
+    task_manager,
+)
 
 from .crud import db
-from .tasks import restart_address_tracking, wait_for_onchain, wait_for_paid_invoices
+from .tasks import (
+    TASK_NAME,
+    on_address_event,
+    on_invoice_paid,
+    restart_address_tracking,
+    satspay_untrack_all_addresses,
+)
 from .views import satspay_generic_router
 from .views_api import satspay_api_router
 from .views_api_themes import satspay_theme_router
-from .websocket_handler import restart_websocket_task, websocket_task
 
 satspay_ext: APIRouter = APIRouter(prefix="/satspay", tags=["satspay"])
 satspay_ext.include_router(satspay_generic_router)
@@ -22,30 +28,25 @@ satspay_static_files = [
     }
 ]
 
-scheduled_tasks: list[asyncio.Task] = []
+_listener_tasks: list[Task] = []
 
 
 def satspay_stop():
-    for task in scheduled_tasks:
-        try:
-            task.cancel()
-        except Exception as ex:
-            logger.warning(ex)
-    if websocket_task:
-        websocket_task.cancel()
+    satspay_untrack_all_addresses()
+    for task in _listener_tasks:
+        task_manager.cancel_task(task)
+    _listener_tasks.clear()
 
 
 def satspay_start():
-    from lnbits.tasks import create_permanent_unique_task, create_unique_task
-
-    paid_invoices_task = create_permanent_unique_task(
-        "ext_satspay_paid_invoices", wait_for_paid_invoices
+    _listener_tasks.append(
+        task_manager.register_invoice_listener(on_invoice_paid, TASK_NAME)
     )
-    onchain_task = create_permanent_unique_task("ext_satspay_onchain", wait_for_onchain)
-    scheduled_tasks.extend([paid_invoices_task, onchain_task])
-    restart_websocket_task()
-    create_unique_task(
-        "ext_satspay_restart_address_tracking", restart_address_tracking()
+    _listener_tasks.append(
+        task_manager.register_onchain_listener(on_address_event, TASK_NAME)
+    )
+    task_manager.create_task(
+        restart_address_tracking(), f"{TASK_NAME}_restart_address_tracking"
     )
 
 
