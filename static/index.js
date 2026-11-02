@@ -244,13 +244,13 @@ window.PageSatspay = {
     },
 
     async getWalletLinks() {
+      if (!this.g.user.extensions.includes('watchonly')) return
       try {
-        let {data} = await LNbits.api.request(
+        const {data} = await LNbits.api.request(
           'GET',
           `/watchonly/api/v1/wallet?network=${this.network}`,
           this.g.user.wallets[0].adminkey
         )
-        data = data.filter(w => w.network === this.network)
         this.walletLinks = data.map(w => ({
           id: w.id,
           label: w.title + ' - ' + w.id

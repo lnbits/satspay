@@ -8,25 +8,27 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from lnbits.core.models import KeyType
+from lnbits.core.models.wallets import OnchainWallet
 from pydantic import ValidationError
 
 from .. import helpers, views_api
 from ..models import Charge, CoreOnchainWallet, CreateCharge, SatspaySettings
 
 
-def core_wallet(**overrides):
+def core_wallet(**overrides) -> OnchainWallet:
     values = {
         "id": "core-wallet",
         "user": "user",
         "name": "Savings",
         "wallet_type": "onchain",
+        "adminkey": "core-adminkey",
         "inkey": "core-inkey",
         "onchain_wallet_kind": "watch",
         "onchain_network": "Mainnet",
-        "onchain_meta": SimpleNamespace(backup_confirmed=False),
+        "onchain_meta": {"backup_confirmed": False},
     }
     values.update(overrides)
-    return SimpleNamespace(**values)
+    return OnchainWallet.model_validate(values)
 
 
 def charge_payload(onchainwallet: str) -> dict:
@@ -341,7 +343,7 @@ def test_core_wallet_discovery_reports_readiness(monkeypatch):
         "ready": core_wallet(
             id="ready",
             onchain_wallet_kind="hot",
-            onchain_meta=SimpleNamespace(backup_confirmed=True),
+            onchain_meta={"backup_confirmed": True},
         ),
     }
     monkeypatch.setattr(helpers, "get_wallets", AsyncMock(return_value=wallets))

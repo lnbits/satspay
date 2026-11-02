@@ -27,9 +27,6 @@ python = ">=3.10,<3.13"
 [tool.uv]
 build-constraint-dependencies = ["scikit-build-core<0.10"]
 
-# Keep UV configuration independent of a parent LNbits checkout.
-[tool.uv]
-
 [tool.mypy]
 exclude = "(nostr/*)"
 [[tool.mypy.overrides]]

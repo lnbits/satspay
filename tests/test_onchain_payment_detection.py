@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 import pytest_asyncio
+from lnbits.core.models import Payment
 from lnbits.db import Database
 from lnbits.settings import settings
 
@@ -181,7 +182,12 @@ async def test_refresh_preserves_concurrent_lightning_payment(
     monkeypatch.setattr(tasks, "send_success_websocket", websocket)
     monkeypatch.setattr(tasks, "call_webhook", webhook)
     monkeypatch.setattr(helpers, "get_standalone_payment", AsyncMock(return_value=None))
-    payment = SimpleNamespace(
+    payment = Payment(
+        checking_id="hash",
+        wallet_id="lightning",
+        fee=0,
+        bolt11="",
+        status="success",
         extra={"tag": "charge", "charge": "charge"},
         payment_hash="hash",
         amount=20000000,
