@@ -194,3 +194,11 @@ async def m014_fasttrack_to_charge(db: Database):
         )
     except OperationalError:
         pass
+
+
+async def m015_private_mempool_opt_in(db: Database):
+    """Private mempool access requires an explicit administrator opt-in."""
+    await db.execute(
+        "ALTER TABLE satspay.settings ADD COLUMN "
+        "mempool_allow_private_ips BOOLEAN NOT NULL DEFAULT FALSE"
+    )

@@ -1,8 +1,9 @@
-import traceback
+import re
 
 import httpx
 from lnbits.core.crud import get_standalone_payment
 from lnbits.settings import settings
+from lnbits.utils.safe_http import SafeHttpClient
 from loguru import logger
 
 from .crud import get_or_create_satspay_settings
@@ -13,7 +14,7 @@ async def call_webhook(charge: Charge):
     try:
         assert charge.webhook, "charge has no webhook"
         settings = await get_or_create_satspay_settings()
-        async with httpx.AsyncClient() as client:
+        async with SafeHttpClient(read_body=False) as client:
             # wordpress expects a GET request with json-encoded binary content
             if settings.webhook_method == "GET":
                 r = await client.request(
@@ -32,19 +33,28 @@ async def call_webhook(charge: Charge):
             logger.success(f"Webhook sent for charge {charge.id}")
             return {
                 "webhook_success": True,
-                "webhook_message": r.reason_phrase,
-                "webhook_response": r.text,
+                "webhook_message": "Webhook delivered.",
+                "webhook_response": "",
             }
     except Exception as e:
         logger.warning(f"Failed to call webhook for charge {charge.id}")
-        logger.warning(charge.webhook)
-        logger.warning(traceback.format_exc())
-        return {"webhook_success": False, "webhook_message": str(e)}
+        logger.warning("Webhook request failed: {}", type(e).__name__)
+        return {
+            "webhook_success": False,
+            "webhook_message": "Webhook request failed.",
+            "webhook_response": "",
+        }
 
 
 async def fetch_onchain_balance(onchain_address: str) -> OnchainBalance:
+    if not re.fullmatch(r"[A-Za-z0-9]{14,90}", onchain_address):
+        raise ValueError("Invalid onchain address.")
     settings = await get_or_create_satspay_settings()
-    async with httpx.AsyncClient() as client:
+    async with SafeHttpClient(
+        private_endpoint=(
+            settings.mempool_url if settings.mempool_allow_private_ips else None
+        )
+    ) as client:
         res = await client.get(
             f"{settings.mempool_url}/api/address/{onchain_address}/txs"
         )
@@ -110,7 +120,9 @@ async def check_charge_balance(charge: Charge) -> Charge:
                 charge.pending = balance.unconfirmed
                 charge.add_extra({"payment_method": "onchain"})
         except Exception as exc:
-            logger.warning(f"Charge check onchain address failed with: {exc!s}")
+            logger.warning(
+                "Charge check onchain address failed: {}", type(exc).__name__
+            )
 
     charge.paid = charge.balance >= charge.amount
 

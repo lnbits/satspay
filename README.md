@@ -66,3 +66,21 @@ Create charges with customizable amounts, expiry times, and payment options. Sha
 
 [![Visit LNbits Shop](https://img.shields.io/badge/Visit-LNbits%20Shop-7C3AED?logo=shopping-cart&logoColor=white&labelColor=5B21B6)](https://shop.lnbits.com/)
 [![Try myLNbits SaaS](https://img.shields.io/badge/Try-myLNbits%20SaaS-2563EB?logo=lightning&logoColor=white&labelColor=1E40AF)](https://my.lnbits.com/login)
+
+
+### Private mempool services
+
+Mempool HTTP requests and live WebSocket updates use LNbits core destination
+validation, IP pinning and response limits. Redirects and environment proxies are
+disabled. Public destinations cannot target the LNbits server's own addresses.
+
+An administrator using a trusted LAN or localhost mempool service must enable
+`mempool_allow_private_ips` in the extension settings. This defaults to **false**,
+including after upgrading an existing installation; private services require an
+explicit opt-in. The exception applies only to the configured mempool origin and
+base path, never to charge webhooks. It allows RFC1918, IPv6 ULA and loopback
+addresses; link-local/cloud metadata, multicast and unspecified addresses remain
+blocked. The canonical LNbits origin remains blocked. Use a separate port for a
+local mempool service. Hostnames are resolved and pinned on each connection.
+
+These extension changes require the accompanying updated LNbits core utilities.
