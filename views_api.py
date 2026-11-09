@@ -9,6 +9,7 @@ from lnbits.decorators import (
     require_invoice_key,
 )
 from lnbits.utils.exchange_rates import get_fiat_rate_satoshis
+from lnbits.utils.safe_http import validate_url
 from loguru import logger
 
 from .crud import (
@@ -223,6 +224,21 @@ async def api_get_or_create_settings() -> SatspaySettings:
 
 @satspay_api_router.put("/api/v1/settings", dependencies=[Depends(check_admin)])
 async def api_update_settings(data: SatspaySettings) -> SatspaySettings:
+    try:
+        await validate_url(
+            data.mempool_url,
+            private_endpoint=(
+                data.mempool_url if data.mempool_allow_private_ips else None
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail=(
+                "Mempool destination is not allowed. "
+                "Private services require the private mempool option."
+            ),
+        ) from exc
     settings = await update_satspay_settings(data)
     restart_websocket_task()
     return settings

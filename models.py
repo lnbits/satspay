@@ -3,14 +3,35 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+import httpx
 from fastapi.param_functions import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class SatspaySettings(BaseModel):
     webhook_method: str = "GET"
     mempool_url: str = "https://mempool.space"
     network: str = "Mainnet"
+    mempool_allow_private_ips: bool = False
+
+    @field_validator("mempool_url")
+    @classmethod
+    def validate_mempool_url(cls, value: str) -> str:
+        try:
+            url = httpx.URL(value.strip())
+        except httpx.InvalidURL as exc:
+            raise ValueError("Invalid mempool URL.") from exc
+        if (
+            url.scheme not in {"http", "https"}
+            or not url.host
+            or url.userinfo
+            or url.query
+            or url.fragment
+        ):
+            raise ValueError(
+                "Use an HTTP(S) mempool URL without credentials, query or fragment."
+            )
+        return str(url).rstrip("/")
 
 
 class CreateCharge(BaseModel):
