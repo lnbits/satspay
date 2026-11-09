@@ -67,7 +67,6 @@ Create charges with customizable amounts, expiry times, and payment options. Sha
 [![Visit LNbits Shop](https://img.shields.io/badge/Visit-LNbits%20Shop-7C3AED?logo=shopping-cart&logoColor=white&labelColor=5B21B6)](https://shop.lnbits.com/)
 [![Try myLNbits SaaS](https://img.shields.io/badge/Try-myLNbits%20SaaS-2563EB?logo=lightning&logoColor=white&labelColor=1E40AF)](https://my.lnbits.com/login)
 
-
 ### Private mempool services
 
 Mempool HTTP requests and live WebSocket updates use LNbits core destination
