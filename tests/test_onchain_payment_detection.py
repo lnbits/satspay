@@ -480,7 +480,9 @@ async def test_slow_webhook_preserves_newer_payment_state(
     notification = asyncio.create_task(
         tasks._notify_onchain_charge(charge)
         if source == "onchain"
-        else views_api.api_charge_webhook(charge.id)
+        else views_api.api_charge_webhook(
+            charge.id, SimpleNamespace(wallet=SimpleNamespace(user=charge.user))
+        )
     )
     try:
         await asyncio.wait_for(webhook_started.wait(), 1)
