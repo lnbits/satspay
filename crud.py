@@ -73,6 +73,47 @@ async def update_charge(charge: Charge) -> Charge:
     return charge
 
 
+async def update_pending_charge(charge: Charge) -> bool:
+    result = await db.execute(
+        """
+        UPDATE satspay.charges
+        SET balance = :balance, pending = :pending, paid = :paid, extra = :extra
+        WHERE id = :id AND paid = false
+        """,
+        {
+            "id": charge.id,
+            "balance": charge.balance,
+            "pending": charge.pending,
+            "paid": charge.paid,
+            "extra": charge.extra,
+        },
+    )
+    return result.rowcount == 1
+
+
+async def update_charge_webhook(charge: Charge, response: dict) -> bool:
+    """Record delivery results only if they still describe the stored payment state."""
+    previous_extra = charge.extra or ""
+    charge.add_extra(response)
+    result = await db.execute(
+        """
+        UPDATE satspay.charges SET extra = :extra
+        WHERE id = :id AND paid = :paid
+          AND balance = :balance AND pending = :pending
+          AND COALESCE(extra, '') = :previous_extra
+        """,
+        {
+            "id": charge.id,
+            "paid": charge.paid,
+            "balance": charge.balance,
+            "pending": charge.pending,
+            "extra": charge.extra,
+            "previous_extra": previous_extra,
+        },
+    )
+    return result.rowcount == 1
+
+
 async def get_charge(charge_id: str) -> Charge | None:
     return await db.fetchone(
         "SELECT * FROM satspay.charges WHERE id = :id",

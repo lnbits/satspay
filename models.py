@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
+from typing import Literal
 
 import httpx
 from fastapi.param_functions import Query
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, validator
+
+CORE_ONCHAIN_WALLET_PREFIX = "core:"
+ONCHAIN_WALLET_REF_PATTERN = re.compile(r"^(?:core:)?[a-zA-Z0-9_-]+$")
+CoreWalletStatus = Literal["ready", "setup", "backup"]
 
 
 class SatspaySettings(BaseModel):
@@ -50,6 +56,19 @@ class CreateCharge(BaseModel):
     currency: str | None = Query(None)
     currency_amount: float | None = Query(None)
     extra: str | None = Query(None)
+
+    @validator("onchainwallet")
+    def validate_onchainwallet(cls, value):
+        if value and not ONCHAIN_WALLET_REF_PATTERN.fullmatch(value):
+            raise ValueError("Invalid onchain wallet reference")
+        return value
+
+
+class CoreOnchainWallet(BaseModel):
+    id: str
+    name: str
+    network: str
+    status: CoreWalletStatus
 
 
 class Charge(BaseModel):

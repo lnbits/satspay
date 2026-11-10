@@ -20,15 +20,21 @@ from .crud import (
     get_charges,
     get_or_create_satspay_settings,
     update_charge,
+    update_charge_webhook,
     update_satspay_settings,
 )
 from .helpers import (
     call_webhook,
     check_charge_balance,
+    fetch_core_onchain_address,
     fetch_onchain_address,
     fetch_onchain_config_network,
+    get_core_onchain_wallets,
+    parse_onchain_wallet_ref,
+    require_core_onchain_wallet,
+    validate_mempool_url,
 )
-from .models import Charge, CreateCharge, SatspaySettings
+from .models import Charge, CoreOnchainWallet, CreateCharge, SatspaySettings
 from .tasks import start_onchain_listener, stop_onchain_listener
 from .websocket_handler import restart_websocket_task
 
@@ -50,6 +56,13 @@ async def _get_wallet_network(wallet: Wallet) -> str:
 @satspay_api_router.get("/api/v1")
 async def api_enabled() -> dict:
     return {"message": "SatsPay API enabled."}
+
+
+@satspay_api_router.get("/api/v1/onchain-wallets")
+async def api_get_core_onchain_wallets(
+    key_type: WalletTypeInfo = Depends(require_invoice_key),
+) -> list[CoreOnchainWallet]:
+    return await get_core_onchain_wallets(key_type.wallet.user)
 
 
 @satspay_api_router.post("/api/v1/charge")
@@ -83,28 +96,48 @@ async def api_charge_create(
             )
     if data.onchainwallet:
         settings = await get_or_create_satspay_settings()
-        network = await _get_wallet_network(key_type.wallet)
-        if network != settings.network:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Onchain network mismatch. {network} != {settings.network}",
-            )
         try:
-            new_address = await fetch_onchain_address(
-                data.onchainwallet, key_type.wallet.inkey
-            )
-            start_onchain_listener(new_address)
-            return await create_charge(
-                user=key_type.wallet.user,
-                onchainaddress=new_address,
-                data=data,
-            )
+            validate_mempool_url(settings.network, settings.mempool_url)
+            source, wallet_id = parse_onchain_wallet_ref(data.onchainwallet)
+            onchain_wallet = None
+            network: str
+            if source == "core":
+                onchain_wallet = await require_core_onchain_wallet(
+                    wallet_id, key_type.wallet.user
+                )
+                network = onchain_wallet.onchain_network or "Mainnet"
+            else:
+                network = await _get_wallet_network(key_type.wallet)
+            if network != settings.network:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=f"Onchain network mismatch. {network} != {settings.network}",
+                )
+            if onchain_wallet:
+                new_address = await fetch_core_onchain_address(onchain_wallet)
+            else:
+                new_address = await fetch_onchain_address(
+                    wallet_id, key_type.wallet.inkey
+                )
+        except HTTPException:
+            raise
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST, detail=str(exc)
+            ) from exc
         except Exception as exc:
-            logger.error(f"Error fetching onchain config: {exc}")
+            logger.error(f"Error fetching onchain address: {exc}")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail="Error fetching onchain address.",
             ) from exc
+        charge = await create_charge(
+            user=key_type.wallet.user,
+            onchainaddress=new_address,
+            data=data,
+        )
+        start_onchain_listener(new_address)
+        return charge
     return await create_charge(user=key_type.wallet.user, data=data)
 
 
@@ -115,38 +148,26 @@ async def api_charges_retrieve(
     return await get_charges(wallet.wallet.user)
 
 
-@satspay_api_router.get(
-    "/api/v1/charge/{charge_id}", dependencies=[Depends(require_invoice_key)]
-)
-@satspay_api_router.get(
-    "/api/v1/charge/balance/{charge_id}",
-    dependencies=[Depends(require_invoice_key)],
-    deprecated=True,
-)
-async def api_charge_retrieve(charge_id: str) -> Charge:
+@satspay_api_router.get("/api/v1/charge/{charge_id}")
+@satspay_api_router.get("/api/v1/charge/balance/{charge_id}", deprecated=True)
+async def api_charge_retrieve(
+    charge_id: str, wallet: WalletTypeInfo = Depends(require_invoice_key)
+) -> Charge:
     """
     This endpoint is used by the woocommerce plugin to check if the status of a charge
     is paid. you can refresh the success page of the webshop to trigger this endpoint.
     useful if the webhook is not working or fails for some reason.
     https://github.com/lnbits/woocommerce-payment-gateway/blob/main/lnbits.php#L312
     """
-    charge = await get_charge(charge_id)
-    if not charge:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
-        )
+    charge = await _get_owned_charge(charge_id, wallet.wallet.user)
     return charge
 
 
-@satspay_api_router.put(
-    "/api/v1/charge/balance/{charge_id}", dependencies=[Depends(require_admin_key)]
-)
-async def api_charge_check_balance(charge_id: str) -> Charge:
-    charge = await get_charge(charge_id)
-    if not charge:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
-        )
+@satspay_api_router.put("/api/v1/charge/balance/{charge_id}")
+async def api_charge_check_balance(
+    charge_id: str, wallet: WalletTypeInfo = Depends(require_admin_key)
+) -> Charge:
+    charge = await _get_owned_charge(charge_id, wallet.wallet.user)
     if charge.paid:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST, detail="Charge is already paid."
@@ -159,38 +180,25 @@ async def api_charge_check_balance(charge_id: str) -> Charge:
     return charge
 
 
-@satspay_api_router.get(
-    "/api/v1/charge/webhook/{charge_id}", dependencies=[Depends(require_admin_key)]
-)
-async def api_charge_webhook(charge_id: str) -> Charge:
-    charge = await get_charge(charge_id)
-    if not charge:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
-        )
+@satspay_api_router.get("/api/v1/charge/webhook/{charge_id}")
+async def api_charge_webhook(
+    charge_id: str, wallet: WalletTypeInfo = Depends(require_admin_key)
+) -> Charge:
+    charge = await _get_owned_charge(charge_id, wallet.wallet.user)
     if not charge.webhook:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST, detail="No webhook set."
         )
-    # update payment status
-    charge = await update_charge(charge)
-
     resp = await call_webhook(charge)
-    charge.add_extra(resp)
-    # update webhook status
-    charge = await update_charge(charge)
+    await update_charge_webhook(charge, resp)
     return charge
 
 
-@satspay_api_router.delete(
-    "/api/v1/charge/{charge_id}", dependencies=[Depends(require_admin_key)]
-)
-async def api_charge_delete(charge_id: str):
-    charge = await get_charge(charge_id)
-    if not charge:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
-        )
+@satspay_api_router.delete("/api/v1/charge/{charge_id}")
+async def api_charge_delete(
+    charge_id: str, wallet: WalletTypeInfo = Depends(require_admin_key)
+):
+    charge = await _get_owned_charge(charge_id, wallet.wallet.user)
     if charge.onchainaddress:
         stop_onchain_listener(charge.onchainaddress)
 
@@ -248,3 +256,12 @@ async def api_update_settings(data: SatspaySettings) -> SatspaySettings:
 async def api_delete_settings() -> None:
     await delete_satspay_settings()
     restart_websocket_task()
+
+
+async def _get_owned_charge(charge_id: str, user_id: str) -> Charge:
+    charge = await get_charge(charge_id)
+    if not charge or charge.user != user_id:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="Charge does not exist."
+        )
+    return charge
