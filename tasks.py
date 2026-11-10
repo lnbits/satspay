@@ -1,5 +1,6 @@
 import asyncio
 import time
+from weakref import WeakValueDictionary
 
 from fastapi import WebSocket
 from lnbits.core.models import Payment
@@ -12,6 +13,7 @@ from .crud import (
     get_charge_by_onchain_address,
     get_pending_charges,
     update_charge,
+    update_charge_webhook,
     update_pending_charge,
 )
 from .helpers import call_webhook, check_charge_balance
@@ -20,6 +22,8 @@ from .websocket_handler import tracked_addresses, ws_receive_queue, ws_send_queu
 
 public_ws_listeners: dict[str, list[WebSocket]] = {}
 poll_tasks: dict[str, asyncio.Task] = {}
+# Keep a lock alive while a refresh or a waiter uses it, then release the entry.
+onchain_refresh_locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
 ONCHAIN_POLL_INTERVAL = 30
 
@@ -28,7 +32,7 @@ async def restart_address_tracking():
     for charge in await get_pending_charges():
         if not charge.onchainaddress:
             continue
-        if charge.timestamp.timestamp() + charge.time * 60 <= time.time():
+        if not _should_track_onchain_charge(charge):
             continue
         start_onchain_listener(charge.onchainaddress)
         try:
@@ -85,8 +89,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         await send_success_websocket(charge)
         if charge.webhook:
             resp = await call_webhook(charge)
-            charge.add_extra(resp)
-            await update_charge(charge)
+            await update_charge_webhook(charge, resp)
 
 
 def start_onchain_listener(address: str):
@@ -144,38 +147,42 @@ async def _poll_charge(address: str):
             logger.warning(f"Onchain charge poll failed for {address}: {exc!s}")
 
 
-async def _refresh_onchain_charge(address: str) -> bool:
-    charge = await get_charge_by_onchain_address(address)
-    if not charge or charge.paid:
-        return False
-    if charge.timestamp.timestamp() + charge.time * 60 <= time.time():
-        return False
-    balance_before = charge.balance
-    pending_before = charge.pending
-    extra_before = charge.extra
-    charge = await check_charge_balance(charge, notify_webhook=False)
-    balance_changed = (
-        charge.balance != balance_before
-        or charge.pending != pending_before
-        or charge.paid
+def _should_track_onchain_charge(charge: Charge) -> bool:
+    # Expiry closes the payment window, but funds already seen can still confirm.
+    return not charge.paid and (
+        charge.pending > 0
+        or charge.timestamp.timestamp() + charge.time * 60 > time.time()
     )
-    if not balance_changed and charge.extra == extra_before:
-        return True
-    if not await update_pending_charge(charge):
-        return False
-    if balance_changed:
-        await _notify_onchain_charge(charge)
-    return not charge.paid
+
+
+async def _refresh_onchain_charge(address: str) -> bool:
+    # Include notification delivery so another refresh cannot cancel its poll task.
+    async with onchain_refresh_locks.setdefault(address, asyncio.Lock()):
+        charge = await get_charge_by_onchain_address(address)
+        if not charge or not _should_track_onchain_charge(charge):
+            return False
+        balance_before = charge.balance
+        pending_before = charge.pending
+        extra_before = charge.extra
+        charge = await check_charge_balance(charge, notify_webhook=False)
+        balance_changed = (
+            charge.balance != balance_before
+            or charge.pending != pending_before
+            or charge.paid
+        )
+        if not balance_changed and charge.extra == extra_before:
+            return _should_track_onchain_charge(charge)
+        if not await update_pending_charge(charge):
+            return False
+        if balance_changed:
+            await _notify_onchain_charge(charge)
+        return _should_track_onchain_charge(charge)
 
 
 async def _notify_onchain_charge(charge: Charge):
     await send_success_websocket(charge)
     if charge.webhook:
         resp = await call_webhook(charge)
-        charge.add_extra(resp)
-        if charge.paid:
-            await update_charge(charge)
-        else:
-            await update_pending_charge(charge)
+        await update_charge_webhook(charge, resp)
     if charge.paid:
         logger.success(f"Charge {charge.id} paid.")

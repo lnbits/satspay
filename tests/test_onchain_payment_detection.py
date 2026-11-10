@@ -10,7 +10,7 @@ from lnbits.core.models import Payment
 from lnbits.db import Database
 from lnbits.settings import settings
 
-from .. import crud, helpers, migrations, tasks, websocket_handler
+from .. import crud, helpers, migrations, tasks, views_api, websocket_handler
 from ..models import Charge, OnchainBalance
 
 
@@ -68,6 +68,7 @@ def refresh_mocks(monkeypatch):
     monkeypatch.setattr(tasks, "get_charge_by_onchain_address", get_charge)
     monkeypatch.setattr(tasks, "check_charge_balance", check_charge_balance)
     monkeypatch.setattr(tasks, "update_charge", update_charge)
+    monkeypatch.setattr(tasks, "update_charge_webhook", AsyncMock(return_value=True))
     monkeypatch.setattr(tasks, "update_pending_charge", update_pending_charge)
     monkeypatch.setattr(tasks, "send_success_websocket", state.websocket)
     monkeypatch.setattr(tasks, "call_webhook", state.webhook)
@@ -380,3 +381,188 @@ def test_tracking_messages_snapshot_addresses(monkeypatch):
         websocket_handler.tracked_addresses.clear()
         tasks.poll_tasks.clear()
         drain_queues()
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_websocket_waits_for_poll_payment_notification(monkeypatch, charge_db):
+    charge = make_charge()
+    await charge_db.insert("satspay.charges", charge)
+    webhook_started = asyncio.Event()
+    release_webhook = asyncio.Event()
+    refresh_requested = asyncio.Event()
+    refresh_finished = asyncio.Event()
+    consumer = None
+    original_refresh = tasks._refresh_onchain_charge
+    read_charge = AsyncMock(wraps=crud.get_charge_by_onchain_address)
+
+    async def refresh(address):
+        if asyncio.current_task() is consumer:
+            refresh_requested.set()
+        result = await original_refresh(address)
+        if asyncio.current_task() is consumer:
+            refresh_finished.set()
+        return result
+
+    async def webhook(charge):
+        webhook_started.set()
+        await release_webhook.wait()
+        return {"webhook_success": True}
+
+    monkeypatch.setattr(settings, "lnbits_running", True)
+    monkeypatch.setattr(tasks, "ONCHAIN_POLL_INTERVAL", 0)
+    monkeypatch.setattr(tasks, "ws_receive_queue", asyncio.Queue())
+    monkeypatch.setattr(tasks, "_refresh_onchain_charge", refresh)
+    monkeypatch.setattr(tasks, "get_charge_by_onchain_address", read_charge)
+    monkeypatch.setattr(tasks, "send_success_websocket", AsyncMock())
+    webhook_mock = AsyncMock(side_effect=webhook)
+    monkeypatch.setattr(tasks, "call_webhook", webhook_mock)
+    monkeypatch.setattr(
+        helpers,
+        "fetch_onchain_balance",
+        AsyncMock(
+            return_value=OnchainBalance(
+                confirmed=charge.amount, unconfirmed=0, txids=["paid"]
+            )
+        ),
+    )
+    tasks.start_onchain_listener("address")
+    poll = tasks.poll_tasks["address"]
+    try:
+        await asyncio.wait_for(webhook_started.wait(), 1)
+        stored = await crud.get_charge(charge.id)
+        assert stored and stored.paid
+        consumer = asyncio.create_task(tasks.wait_for_onchain())
+        tasks.ws_receive_queue.put_nowait(
+            {"multi-address-transactions": {"address": {}}}
+        )
+        await asyncio.wait_for(refresh_requested.wait(), 1)
+        # A second refresh must not act on the intermediate paid state.
+        assert read_charge.await_count == 1
+        release_webhook.set()
+        await asyncio.wait_for(asyncio.shield(poll), 1)
+        await asyncio.wait_for(refresh_finished.wait(), 1)
+        assert not poll.cancelled()
+        webhook_mock.assert_awaited_once()
+        stored = await crud.get_charge(charge.id)
+        assert stored and '"webhook_success": true' in (stored.extra or "")
+        assert "address" not in tasks.poll_tasks
+    finally:
+        release_webhook.set()
+        tasks.stop_onchain_polling()
+        if consumer:
+            consumer.cancel()
+        await asyncio.gather(
+            *([poll, consumer] if consumer else [poll]), return_exceptions=True
+        )
+        drain_queues()
+        await crud.delete_charge(charge.id)
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize("source", ["onchain", "manual"])
+@pytest.mark.parametrize("paid", [False, True])
+async def test_slow_webhook_preserves_newer_payment_state(
+    monkeypatch, charge_db, source, paid
+):
+    charge = make_charge(balance=5000, extra='{"txids": ["first"]}')
+    await charge_db.insert("satspay.charges", charge)
+    webhook_started = asyncio.Event()
+    release_webhook = asyncio.Event()
+
+    async def webhook(charge):
+        webhook_started.set()
+        await release_webhook.wait()
+        return {"webhook_success": False}
+
+    monkeypatch.setattr(tasks, "send_success_websocket", AsyncMock())
+    monkeypatch.setattr(tasks, "call_webhook", webhook)
+    monkeypatch.setattr(views_api, "call_webhook", webhook)
+    notification = asyncio.create_task(
+        tasks._notify_onchain_charge(charge)
+        if source == "onchain"
+        else views_api.api_charge_webhook(charge.id)
+    )
+    try:
+        await asyncio.wait_for(webhook_started.wait(), 1)
+        newer = make_charge(
+            balance=20000 if paid else 10000,
+            paid=paid,
+            extra='{"txids": ["first", "second"], "webhook_success": true}',
+        )
+        assert await crud.update_pending_charge(newer)
+        release_webhook.set()
+        await asyncio.wait_for(notification, 1)
+        stored = await crud.get_charge(charge.id)
+        assert stored
+        assert stored.balance == newer.balance
+        assert stored.paid == newer.paid
+        assert stored.extra == newer.extra
+    finally:
+        release_webhook.set()
+        await asyncio.gather(notification, return_exceptions=True)
+        await crud.delete_charge(charge.id)
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize("fasttrack", [False, True])
+async def test_payment_seen_before_expiry_can_confirm(
+    monkeypatch, charge_db, fasttrack
+):
+    charge = make_charge(
+        timestamp=datetime.now() - timedelta(hours=2),
+        zeroconf=False,
+        fasttrack=fasttrack,
+        pending=20000,
+        extra='{"txids": ["paid-before-expiry"]}',
+    )
+    await charge_db.insert("satspay.charges", charge)
+    webhook = AsyncMock(return_value={"webhook_success": True})
+    monkeypatch.setattr(tasks, "send_success_websocket", AsyncMock())
+    monkeypatch.setattr(tasks, "call_webhook", webhook)
+    monkeypatch.setattr(
+        helpers,
+        "fetch_onchain_balance",
+        AsyncMock(
+            return_value=OnchainBalance(
+                confirmed=20000, unconfirmed=0, txids=["paid-before-expiry"]
+            )
+        ),
+    )
+    try:
+        assert await tasks._refresh_onchain_charge("address") is False
+        stored = await crud.get_charge(charge.id)
+        assert stored and stored.paid
+        assert stored.balance == 20000
+        assert stored.pending == 0
+        webhook.assert_awaited_once()
+        assert '"webhook_success": true' in (stored.extra or "")
+    finally:
+        await crud.delete_charge(charge.id)
+
+
+@pytest.mark.parametrize("pending", [0, 20000])
+def test_restart_tracks_expired_charges_only_with_pending_funds(monkeypatch, pending):
+    charge = make_charge(timestamp=datetime.now() - timedelta(hours=2), pending=pending)
+    start = Mock()
+    refresh = AsyncMock(return_value=True)
+    monkeypatch.setattr(tasks, "get_pending_charges", AsyncMock(return_value=[charge]))
+    monkeypatch.setattr(tasks, "start_onchain_listener", start)
+    monkeypatch.setattr(tasks, "_refresh_onchain_charge", refresh)
+
+    asyncio.run(tasks.restart_address_tracking())
+
+    if pending:
+        start.assert_called_once_with("address")
+        refresh.assert_awaited_once_with("address")
+    else:
+        start.assert_not_called()
+        refresh.assert_not_awaited()
+
+
+def test_expired_pending_charge_stops_tracking_if_payment_disappears(refresh_mocks):
+    timestamp = datetime.now() - timedelta(hours=2)
+    refresh_mocks.charge = make_charge(timestamp=timestamp, pending=20000)
+    refresh_mocks.checked = make_charge(timestamp=timestamp)
+
+    assert asyncio.run(tasks._refresh_onchain_charge("address")) is False
+    assert refresh_mocks.updated == [refresh_mocks.checked]
