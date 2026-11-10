@@ -1,10 +1,11 @@
 import asyncio
 import json
 
+import httpx
 from lnbits.settings import settings
 from lnbits.tasks import create_permanent_unique_task
+from lnbits.utils.safe_http import safe_websocket
 from loguru import logger
-from websockets.asyncio.client import connect
 
 from .crud import get_or_create_satspay_settings
 
@@ -48,9 +49,17 @@ def subscription_messages() -> list[dict]:
 
 async def websocket_handler():
     satspay_settings = await get_or_create_satspay_settings()
-    uri = f"{satspay_settings.mempool_url}/api/v1/ws".replace("http", "ws")
+    url = httpx.URL(f"{satspay_settings.mempool_url}/api/v1/ws")
+    uri = str(url.copy_with(scheme="wss" if url.scheme == "https" else "ws"))
     logger.info(f"websocket_handler: Connecting to {uri}...")
-    async with connect(uri) as websocket:
+    async with safe_websocket(
+        uri,
+        private_endpoint=(
+            satspay_settings.mempool_url
+            if satspay_settings.mempool_allow_private_ips
+            else None
+        ),
+    ) as websocket:
         logger.info(f"websocket_handler: Connected to {uri}")
         consumer_task = asyncio.create_task(consumer_handler(websocket))
         for message in subscription_messages():

@@ -177,6 +177,12 @@ window.PageSatspay = {
           name: 'mempool_url'
         },
         {
+          type: 'bool',
+          description:
+            'Allow the configured mempool service on a private network or localhost. Enable only for a service you trust. Redirects and metadata addresses remain blocked.',
+          name: 'mempool_allow_private_ips'
+        },
+        {
           type: 'str',
           description:
             'Webhook Method with which the webhook is sent (GET is required for Woocommerce plugin). default: `GET`, or `POST`',
