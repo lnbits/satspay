@@ -1,4 +1,6 @@
 import asyncio
+import hmac
+import json
 import socket
 from datetime import datetime
 from unittest.mock import AsyncMock
@@ -22,6 +24,7 @@ def anyio_backend():
 async def test_webhook_keeps_payload_but_never_returns_response_body(
     monkeypatch, method
 ):
+    monkeypatch.setattr(helpers, "time", lambda: 1700000000)
     monkeypatch.setattr(settings, "lnbits_callback_url_rules", [])
     monkeypatch.setattr(
         helpers,
@@ -57,6 +60,7 @@ async def test_webhook_keeps_payload_but_never_returns_response_body(
         time=60,
         timestamp=datetime.now(),
         webhook="https://public.example/hook",
+        webhook_secret="a" * 64,
     )
     result = await helpers.call_webhook(charge)
     assert result == {
@@ -65,13 +69,20 @@ async def test_webhook_keeps_payload_but_never_returns_response_body(
         "webhook_response": "",
     }
     assert requests[0].method == method
-    import json
-
+    assert requests[0].headers["X-LNBits-Timestamp"] == "1700000000"
     payload = json.loads(requests[0].content)
     if method == "POST":
         payload = json.loads(payload)  # Preserve the existing Wordpress payload.
     assert payload["id"] == charge.id
     assert payload["amount"] == charge.amount
+    assert "webhook_secret" not in payload
+    signed = (
+        requests[0].headers["X-LNBits-Timestamp"].encode() + b"." + requests[0].content
+    )
+    assert (
+        requests[0].headers["X-LNBits-Signature"]
+        == hmac.new(("a" * 64).encode(), signed, "sha256").hexdigest()
+    )
 
 
 @pytest.mark.anyio
@@ -92,6 +103,7 @@ async def test_private_webhook_returns_sanitized_failure(monkeypatch, mempool_pr
         time=60,
         timestamp=datetime.now(),
         webhook="http://127.0.0.1/?key=secret",
+        webhook_secret="a" * 64,
     )
     result = await helpers.call_webhook(charge)
     assert result == {

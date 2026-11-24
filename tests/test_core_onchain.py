@@ -101,6 +101,9 @@ def mocks(monkeypatch):
     def start_listener(address):
         state.calls.append("start")
 
+    monkeypatch.setattr(
+        views_api, "get_charge_by_onchain_address", AsyncMock(return_value=None)
+    )
     monkeypatch.setattr(views_api, "create_charge", create_charge)
     monkeypatch.setattr(views_api, "start_onchain_listener", start_listener)
     monkeypatch.setattr(views_api, "fetch_core_onchain_address", fetch_core_address)
@@ -256,7 +259,9 @@ def test_legacy_watchonly_reference_is_unchanged(app, mocks):
     assert response.status_code == 200
     assert mocks.created["data"].onchainwallet == "watch-id"
     assert mocks.created["address"] == "bc1qwatchonly"
-    mocks.fetch_onchain_address.assert_awaited_once_with("watch-id", "merchant-inkey")
+    mocks.fetch_onchain_address.assert_awaited_once_with(
+        "watch-id", "merchant-inkey", "Mainnet"
+    )
 
 
 def test_core_wallet_discovery_endpoint_returns_safe_fields(app, monkeypatch):

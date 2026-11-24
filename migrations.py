@@ -1,4 +1,6 @@
-from lnbits.db import Database
+from secrets import token_hex
+
+from lnbits.db import SQLITE, Database
 from sqlalchemy.exc import OperationalError
 
 
@@ -202,3 +204,26 @@ async def m015_private_mempool_opt_in(db: Database):
         "ALTER TABLE satspay.settings ADD COLUMN "
         "mempool_allow_private_ips BOOLEAN NOT NULL DEFAULT FALSE"
     )
+
+
+async def m016_add_webhook_secret(db: Database):
+    columns = (
+        (await db.execute("SELECT * FROM satspay.charges LIMIT 0")).keys()
+        if db.type == SQLITE
+        else ()
+    )
+    if "webhook_secret" not in columns:
+        add_column = "ADD COLUMN" if db.type == SQLITE else "ADD COLUMN IF NOT EXISTS"
+        await db.execute(
+            f"ALTER TABLE satspay.charges {add_column} webhook_secret TEXT"
+        )
+
+    charges: list = await db.fetchall("""
+        SELECT id FROM satspay.charges
+        WHERE webhook IS NOT NULL AND webhook_secret IS NULL
+        """)
+    for row in charges:
+        await db.execute(
+            "UPDATE satspay.charges SET webhook_secret = :secret WHERE id = :id",
+            {"id": row["id"], "secret": token_hex(32)},
+        )

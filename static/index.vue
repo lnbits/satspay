@@ -234,7 +234,7 @@
                       <span v-text="$t('satspay.completed_link')"></span>:
                       <a
                         class="text-secondary"
-                        :href="props.row.completelink"
+                        :href="safeHttpUrl(props.row.completelink)"
                         target="_blank"
                         style="color: unset; text-decoration: none"
                         v-text="
@@ -246,12 +246,19 @@
                       <span v-text="$t('satspay.webhook')"></span>:
                       <a
                         class="text-secondary"
-                        :href="props.row.webhook"
+                        :href="safeHttpUrl(props.row.webhook)"
                         target="_blank"
                         style="color: unset; text-decoration: none"
                         v-text="props.row.webhook"
                       ></a>
                     </div>
+                    <q-input
+                      v-if="props.row.webhook_secret"
+                      :model-value="props.row.webhook_secret"
+                      :label="$t('satspay.webhook_secret')"
+                      readonly
+                      dense
+                    ></q-input>
                     <div v-if="props.row.webhook">
                       <span v-text="$t('satspay.webhook_response')"></span>:
                       <q-badge

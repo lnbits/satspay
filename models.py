@@ -4,10 +4,10 @@ import json
 import re
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlsplit
 
 import httpx
-from fastapi.param_functions import Query
-from pydantic import BaseModel, field_validator, validator
+from pydantic import BaseModel, Field, field_validator
 
 CORE_ONCHAIN_WALLET_PREFIX = "core:"
 ONCHAIN_WALLET_REF_PATTERN = re.compile(r"^(?:core:)?[a-zA-Z0-9_-]+$")
@@ -15,7 +15,7 @@ CoreWalletStatus = Literal["ready", "setup", "backup"]
 
 
 class SatspaySettings(BaseModel):
-    webhook_method: str = "GET"
+    webhook_method: Literal["GET", "POST"] = "GET"
     mempool_url: str = "https://mempool.space"
     network: str = "Mainnet"
     mempool_allow_private_ips: bool = False
@@ -41,23 +41,36 @@ class SatspaySettings(BaseModel):
 
 
 class CreateCharge(BaseModel):
-    onchainwallet: str | None = Query(None)
-    lnbitswallet: str | None = Query(None)
-    name: str | None = Query(None)
-    description: str = Query(...)
-    webhook: str | None = Query(None)
-    completelink: str | None = Query(None)
-    completelinktext: str = Query("Back to Merchant")
-    time: int = Query(..., ge=1)
-    amount: int | None = Query(None, ge=1)
-    zeroconf: bool = Query(False)
-    fasttrack: bool = Query(False)
-    custom_css: str | None = Query(None)
-    currency: str | None = Query(None)
-    currency_amount: float | None = Query(None)
-    extra: str | None = Query(None)
+    onchainwallet: str | None = None
+    lnbitswallet: str | None = None
+    name: str | None = None
+    description: str
+    webhook: str | None = None
+    completelink: str | None = None
+    completelinktext: str = "Back to Merchant"
+    time: int = Field(..., ge=1)
+    amount: int | None = Field(default=None, ge=1)
+    zeroconf: bool = False
+    fasttrack: bool = False
+    custom_css: str | None = None
+    currency: str | None = None
+    currency_amount: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    extra: str | None = None
 
-    @validator("onchainwallet")
+    @field_validator("webhook", "completelink")
+    @classmethod
+    def validate_url(cls, value):
+        return _http_url(value)
+
+    @field_validator("extra")
+    @classmethod
+    def validate_extra(cls, value):
+        if value is not None and not isinstance(json.loads(value), dict):
+            raise ValueError("extra must be a JSON object.")
+        return value
+
+    @field_validator("onchainwallet")
+    @classmethod
     def validate_onchainwallet(cls, value):
         if value and not ONCHAIN_WALLET_REF_PATTERN.fullmatch(value):
             raise ValueError("Invalid onchain wallet reference")
@@ -91,6 +104,7 @@ class Charge(BaseModel):
     payment_request: str | None = None
     payment_hash: str | None = None
     webhook: str | None = None
+    webhook_secret: str | None = None
     completelink: str | None = None
     custom_css: str | None = None
     currency: str | None = None
@@ -98,7 +112,12 @@ class Charge(BaseModel):
     extra: str | None = None
 
     def add_extra(self, extra: dict):
-        old_extra = json.loads(self.extra) if self.extra else {}
+        try:
+            old_extra = json.loads(self.extra) if self.extra else {}
+        except (TypeError, ValueError):
+            old_extra = {}
+        if not isinstance(old_extra, dict):
+            old_extra = {}
         self.extra = json.dumps({**old_extra, **extra})
 
     @property
@@ -109,7 +128,7 @@ class Charge(BaseModel):
         return ((self.pending or 0) >= self.amount and self.fasttrack) or self.paid
 
     @property
-    def public(self):
+    def status(self):
         public_keys = [
             "id",
             "name",
@@ -127,18 +146,30 @@ class Charge(BaseModel):
             "custom_css",
             "paid",
             "completelinktext",
+            "currency",
+            "currency_amount",
         ]
         c = {k: v for k, v in self.model_dump().items() if k in public_keys}
-        c["paid"] = self.paid_fasttrack
         c["timestamp"] = self.timestamp.isoformat()
         if self.paid_fasttrack:
-            c["completelink"] = self.completelink
+            c["completelink"] = self.safe_completelink
         return c
+
+    @property
+    def public(self):
+        return {**self.status, "paid": self.paid_fasttrack}
+
+    @property
+    def safe_completelink(self):
+        try:
+            return _http_url(self.completelink)
+        except ValueError:
+            return None
 
 
 class CreateSatsPayTheme(BaseModel):
-    title: str = Query(...)
-    custom_css: str = Query(...)
+    title: str
+    custom_css: str
 
 
 class SatsPayTheme(BaseModel):
@@ -152,3 +183,19 @@ class OnchainBalance(BaseModel):
     confirmed: int
     unconfirmed: int
     txids: list[str]
+
+
+def _http_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    url = urlsplit(value)
+    if (
+        url.scheme not in {"http", "https"}
+        or not url.hostname
+        or url.username is not None
+        or url.password is not None
+    ):
+        raise ValueError("URL must be an absolute HTTP or HTTPS URL.")
+    # Accessing port also rejects malformed and out-of-range ports.
+    _ = url.port
+    return value
