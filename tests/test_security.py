@@ -1,7 +1,7 @@
 import asyncio
 import inspect
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -155,7 +155,11 @@ async def test_owner_admin_can_read_full_charge(client):
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("kind", ["invoice", "admin"])
-async def test_creation_response_respects_key_type(client, kind):
+async def test_creation_response_respects_key_type(client, kind, monkeypatch):
+    fixed = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        crud, "datetime", SimpleNamespace(now=lambda tz=None: fixed.replace(tzinfo=tz))
+    )
     response = await client.post(
         "/satspay/api/v1/charge",
         headers={"X-API-KEY": f"owner-{kind}"},
@@ -170,9 +174,8 @@ async def test_creation_response_respects_key_type(client, kind):
     )
     assert response.status_code == 200, response.text
     data = response.json()
-    created_at = datetime.fromisoformat(data["timestamp"])
-    assert created_at.utcoffset() == timedelta(0)
-    assert abs((datetime.now(timezone.utc) - created_at).total_seconds()) < 5
+    created_at = Charge.model_validate(data).timestamp
+    assert created_at == fixed
     stored = await crud.get_charge(data["id"])
     assert stored and stored.webhook_secret
     assert len(stored.webhook_secret) == 64
