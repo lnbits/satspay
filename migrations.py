@@ -1,7 +1,7 @@
 from secrets import token_hex
 
-from lnbits.db import Database
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from lnbits.db import SQLITE, Database
+from sqlalchemy.exc import OperationalError
 
 
 async def m001_initial(db: Database):
@@ -207,10 +207,16 @@ async def m015_private_mempool_opt_in(db: Database):
 
 
 async def m016_add_webhook_secret(db: Database):
-    try:
-        await db.execute("ALTER TABLE satspay.charges ADD COLUMN webhook_secret TEXT")
-    except (OperationalError, ProgrammingError):
-        pass
+    columns = (
+        (await db.execute("SELECT * FROM satspay.charges LIMIT 0")).keys()
+        if db.type == SQLITE
+        else ()
+    )
+    if "webhook_secret" not in columns:
+        add_column = "ADD COLUMN" if db.type == SQLITE else "ADD COLUMN IF NOT EXISTS"
+        await db.execute(
+            f"ALTER TABLE satspay.charges {add_column} webhook_secret TEXT"
+        )
 
     charges: list = await db.fetchall("""
         SELECT id FROM satspay.charges

@@ -48,7 +48,7 @@ def state(monkeypatch):
         check_charge_balance=AsyncMock(
             return_value=charge.model_copy(update={"pending": 500})
         ),
-        update_charge=AsyncMock(side_effect=lambda value: value),
+        update_pending_charge=AsyncMock(return_value=True),
         call_webhook=AsyncMock(return_value={"webhook_success": True}),
         update_charge_webhook=AsyncMock(return_value=True),
         delete_charge=AsyncMock(),
@@ -58,7 +58,7 @@ def state(monkeypatch):
     for name in (
         "get_charge",
         "check_charge_balance",
-        "update_charge",
+        "update_pending_charge",
         "call_webhook",
         "update_charge_webhook",
         "delete_charge",
@@ -121,7 +121,7 @@ def test_private_routes_reject_other_users_without_side_effects(
     assert response.json() == {"detail": "Charge does not exist."}
     state.check_charge_balance.assert_not_awaited()
     state.call_webhook.assert_not_awaited()
-    state.update_charge.assert_not_awaited()
+    state.update_pending_charge.assert_not_awaited()
     state.update_charge_webhook.assert_not_awaited()
     state.delete_charge.assert_not_awaited()
     state.stop_onchain_listener.assert_not_called()
@@ -159,8 +159,10 @@ def test_owner_can_manage_charge_with_admin_key(client, state, method, path):
 
     assert response.status_code == 200
     if method == "PUT":
-        state.check_charge_balance.assert_awaited_once_with(state.charge)
-        state.update_charge.assert_awaited_once()
+        state.check_charge_balance.assert_awaited_once_with(
+            state.charge, notify_webhook=False
+        )
+        state.update_pending_charge.assert_awaited_once()
         assert response.json()["pending"] == 500
     elif method == "DELETE":
         state.delete_charge.assert_awaited_once_with(state.charge.id)
@@ -236,4 +238,4 @@ def test_public_websocket_receives_payment_updates_without_a_key(client, state):
             "pending": 0,
             "completelink": state.charge.completelink,
         }
-    assert state.listeners["charge"] == []
+    assert not state.listeners

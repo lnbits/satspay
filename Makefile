@@ -34,7 +34,7 @@ test:
 	PYTHONUNBUFFERED=1 \
 	DEBUG=true \
 	uv run pytest
-	node tests/test_security.cjs
+	node --test tests/*.cjs
 install-pre-commit-hook:
 	@echo "Installing pre-commit hook to git"
 	@echo "Uninstall the hook with uv run pre-commit uninstall"
@@ -52,4 +52,4 @@ test-security:
 	@test_data=$$(mktemp -d); trap 'rm -rf "$$test_data"' EXIT; \
 	LNBITS_DATA_FOLDER="$$test_data" LNBITS_DATABASE_URL="" \
 	uv run pytest -p no:cacheprovider tests/test_security.py
-	node tests/test_security.cjs
+	node --test tests/*.cjs

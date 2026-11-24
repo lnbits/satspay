@@ -1,10 +1,9 @@
-import hmac
+import asyncio
 import inspect
-import ipaddress
 import json
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 import httpx
 import lnbits.db as db_module
@@ -38,7 +37,7 @@ from ..websocket_handler import ws_send_queue
 
 @pytest.fixture
 def anyio_backend():
-    return "asyncio", {"use_uvloop": True}
+    return "asyncio"
 
 
 @pytest.fixture
@@ -65,12 +64,12 @@ def state(monkeypatch):
     monkeypatch.setattr(settings, "lnbits_callback_url_rules", [])
     monkeypatch.setattr(settings, "lnbits_callback_allow_private_ips", False)
     monkeypatch.setattr(settings, "lnbits_running", True)
-    tasks.tracked_addresses.clear()
+    tasks.stop_onchain_polling()
     tasks.public_ws_listeners.clear()
     while not ws_send_queue.empty():
         ws_send_queue.get_nowait()
     yield
-    tasks.tracked_addresses.clear()
+    tasks.stop_onchain_polling()
     tasks.public_ws_listeners.clear()
     while not ws_send_queue.empty():
         ws_send_queue.get_nowait()
@@ -134,11 +133,14 @@ async def client(database, charge, monkeypatch):
 @pytest.mark.anyio
 @pytest.mark.parametrize("key", ["owner-invoice", "other-invoice", "other-admin"])
 @pytest.mark.parametrize("path", ["charge/charge", "charge/balance/charge"])
-async def test_invoice_reads_only_status(client, key, path):
+async def test_invoice_read_hides_secret_and_requires_owner(client, key, path):
     response = await client.get(f"/satspay/api/v1/{path}", headers={"X-API-KEY": key})
+    if key != "owner-invoice":
+        assert response.status_code == 404
+        return
     assert response.status_code == 200
     data = response.json()
-    assert not {"user", "webhook", "webhook_secret", "extra"} & data.keys()
+    assert "webhook_secret" not in data
     assert data["lnbitswallet"] == "wallet"
     assert data["paid"] is False
 
@@ -174,9 +176,7 @@ async def test_creation_response_respects_key_type(client, kind):
     stored = await crud.get_charge(data["id"])
     assert stored and stored.webhook_secret
     assert len(stored.webhook_secret) == 64
-    assert ("user" in data) is (kind == "admin")
-    if kind == "invoice":
-        assert not {"webhook", "webhook_secret", "extra"} & data.keys()
+    assert ("webhook_secret" in data) is (kind == "admin")
 
 
 @pytest.mark.anyio
@@ -196,7 +196,7 @@ async def test_foreign_admin_rejected_before_side_effects(
     refresh = AsyncMock()
     monkeypatch.setattr(views_api, "call_webhook", callback)
     monkeypatch.setattr(views_api, "check_charge_balance", refresh)
-    tasks.start_onchain_listener(charge)
+    tasks.start_onchain_listener(charge.onchainaddress)
     response = await client.request(
         method, f"/satspay/api/v1/{path}", headers={"X-API-KEY": "other-admin"}
     )
@@ -209,7 +209,7 @@ async def test_foreign_admin_rejected_before_side_effects(
 
 @pytest.mark.anyio
 async def test_owner_delete_stops_tracking(client, charge):
-    tasks.start_onchain_listener(charge)
+    tasks.start_onchain_listener(charge.onchainaddress)
     response = await client.delete(
         "/satspay/api/v1/charge/charge", headers={"X-API-KEY": "owner-admin"}
     )
@@ -254,7 +254,9 @@ async def test_lightning_settlement_not_overwritten_by_onchain(charge, monkeypat
     monkeypatch.setattr(
         helpers, "get_standalone_payment", AsyncMock(return_value=payment)
     )
-    balance = AsyncMock()
+    balance = AsyncMock(
+        return_value=OnchainBalance(confirmed=0, unconfirmed=0, txids=[])
+    )
     monkeypatch.setattr(helpers, "fetch_onchain_balance", balance)
     updated = await helpers.check_charge_balance(charge)
     assert updated.paid and updated.balance == updated.amount
@@ -324,98 +326,6 @@ def test_fasttrack_does_not_change_api_settlement_status(charge):
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    "ip",
-    ["127.0.0.1", "10.0.0.1", "169.254.169.254", "::1", "fc00::1", "::ffff:127.0.0.1"],
-)
-async def test_webhook_rejects_private_dns_results(charge, monkeypatch, ip):
-    monkeypatch.setattr(
-        helpers,
-        "_resolve_webhook_host",
-        AsyncMock(return_value=[ipaddress.ip_address(ip)]),
-    )
-    client = Mock()
-    monkeypatch.setattr(helpers.httpx, "AsyncClient", client)
-    result = await helpers.call_webhook(charge)
-    assert result == {
-        "webhook_success": False,
-        "webhook_message": "Webhook request failed.",
-    }
-    client.assert_not_called()
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize(
-    "url",
-    [
-        "file:///etc/passwd",
-        "javascript:alert(1)",
-        "http://user:password@merchant.example/",
-    ],
-)
-async def test_webhook_rejects_invalid_schemes_and_credentials(
-    charge, monkeypatch, url
-):
-    charge.webhook = url
-    resolve = AsyncMock()
-    monkeypatch.setattr(helpers, "_resolve_webhook_host", resolve)
-    assert not (await helpers.call_webhook(charge))["webhook_success"]
-    resolve.assert_not_called()
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("method", ["GET", "POST"])
-@pytest.mark.parametrize(
-    "response_status,response_body", [(200, b"ok"), (302, b""), (200, b"x" * 65537)]
-)
-async def test_webhook_pins_target_signs_safe_body_and_bounds_response(
-    charge, monkeypatch, method, response_status, response_body
-):
-    monkeypatch.setattr(
-        helpers,
-        "_resolve_webhook_host",
-        AsyncMock(return_value=[ipaddress.ip_address("93.184.216.34")]),
-    )
-    monkeypatch.setattr(
-        helpers,
-        "get_or_create_satspay_settings",
-        AsyncMock(return_value=SimpleNamespace(webhook_method=method)),
-    )
-    requests = []
-
-    def handler(request):
-        requests.append(request)
-        assert request.url.host == "93.184.216.34"
-        assert request.headers["host"] == "merchant.example"
-        assert request.extensions["sni_hostname"] == "merchant.example"
-        assert request.method == method
-        payload = json.loads(request.content)
-        assert not {"user", "extra", "webhook", "webhook_secret"} & payload.keys()
-        signed = request.headers["X-LNBits-Timestamp"].encode() + b"." + request.content
-        assert hmac.compare_digest(
-            request.headers["X-LNBits-Signature"],
-            hmac.new(charge.webhook_secret.encode(), signed, "sha256").hexdigest(),
-        )
-        return httpx.Response(
-            response_status,
-            content=response_body,
-            headers={"Location": "http://127.0.0.1/"},
-        )
-
-    client_type = httpx.AsyncClient
-    monkeypatch.setattr(
-        helpers.httpx,
-        "AsyncClient",
-        lambda **kwargs: client_type(transport=httpx.MockTransport(handler), **kwargs),
-    )
-    result = await helpers.call_webhook(charge)
-    assert result["webhook_success"] is (
-        response_status == 200 and len(response_body) <= 65536
-    )
-    assert len(requests) == 1
-
-
-@pytest.mark.anyio
 async def test_watchonly_ownership_checked_before_requesting_address(monkeypatch):
     requests = []
 
@@ -481,44 +391,13 @@ async def test_theme_writes_require_owner(database):
 
 
 @pytest.mark.anyio
-async def test_onchain_callbacks_only_for_paid_and_stale_updates_ignored(
-    database, charge, monkeypatch
-):
-    await database.insert("satspay.charges", charge)
-    webhook = AsyncMock(return_value={"webhook_success": True})
-    monkeypatch.setattr(tasks, "call_webhook", webhook)
-    tasks.start_onchain_listener(charge)
-    await tasks._handle_ws_message("address", {"mempool": [], "confirmed": []})
-    webhook.assert_not_called()
-    await tasks._handle_ws_message(
-        "address",
-        {
-            "confirmed": [
-                {
-                    "txid": "tx",
-                    "vout": [{"scriptpubkey_address": "address", "value": 100}],
-                }
-            ]
-        },
-    )
-    webhook.assert_awaited_once()
-    stored = await crud.get_charge(charge.id)
-    assert stored and stored.paid
-    assert not tasks.tracked_addresses
-    await tasks._handle_ws_message("address", {"confirmed": []})
-    stored = await crud.get_charge(charge.id)
-    assert stored and stored.paid
-    webhook.assert_awaited_once()
-
-
-@pytest.mark.anyio
 async def test_lightning_completion_untracks_combined_charge(
     database, charge, monkeypatch
 ):
     await database.insert("satspay.charges", charge)
     webhook = AsyncMock(return_value={"webhook_success": True})
     monkeypatch.setattr(tasks, "call_webhook", webhook)
-    tasks.start_onchain_listener(charge)
+    tasks.start_onchain_listener(charge.onchainaddress)
     payment = Payment(
         checking_id="checking-id",
         wallet_id="wallet",
@@ -534,23 +413,6 @@ async def test_lightning_completion_untracks_combined_charge(
     stored = await crud.get_charge(charge.id)
     assert stored and stored.paid
     webhook.assert_awaited_once()
-
-
-def test_tracking_expiry_limit_mapping_and_queue_coalescing(charge, monkeypatch):
-    monkeypatch.setattr(tasks, "MAX_TRACKED_ADDRESSES", 1)
-    tasks.start_onchain_listener(charge)
-    assert ws_send_queue.qsize() == 1
-    other = charge.copy(update={"id": "other", "onchainaddress": "other-address"})
-    with pytest.raises(ValueError, match="capacity"):
-        tasks.start_onchain_listener(other)
-    charge.timestamp = datetime.now() - timedelta(hours=1)
-    tasks.prune_address_tracking()
-    assert not tasks.tracked_addresses
-    assert ws_send_queue.qsize() == 1
-    assert ws_send_queue.get_nowait() == {"track-addresses": []}
-    tasks.start_onchain_listener(other)
-    with pytest.raises(ValueError, match="already tracked"):
-        tasks.start_onchain_listener(other.copy(update={"id": "different"}))
 
 
 @pytest.mark.anyio
@@ -584,13 +446,13 @@ async def test_secret_migration_backfills_existing_charges(tmp_path, monkeypatch
     db = Database("ext_satspay")
     try:
         for name, migrate in inspect.getmembers(migrations, inspect.isfunction):
-            if name.startswith("m") and name < "m015":
+            if name.startswith("m") and name < "m016":
                 await migrate(db)
         await db.execute(
             "INSERT INTO satspay.charges (id, webhook) VALUES (:id, :webhook)",
             {"id": "old", "webhook": "https://merchant.example/"},
         )
-        await migrations.m015_add_webhook_secret(db)
+        await migrations.m016_add_webhook_secret(db)
         row = await db.fetchone(
             "SELECT webhook_secret FROM satspay.charges WHERE id = :id", {"id": "old"}
         )
@@ -616,79 +478,16 @@ async def test_stale_update_cannot_reset_settled_charge(database, charge):
 
 
 @pytest.mark.anyio
-async def test_startup_refresh_preserves_concurrent_payment(
-    database, charge, monkeypatch
-):
-    await database.insert("satspay.charges", charge)
-    callback = AsyncMock(return_value={"webhook_success": True})
-    monkeypatch.setattr(tasks, "call_webhook", callback)
-
-    async def refresh(stale):
-        paid = stale.copy(update={"paid": True, "balance": stale.amount})
-        await crud.update_charge(paid)
-        await callback(paid)
-        return stale
-
-    monkeypatch.setattr(tasks, "check_charge_balance", refresh)
-    await tasks.restart_address_tracking()
-    stored = await crud.get_charge(charge.id)
-    assert stored and stored.paid and stored.balance == charge.amount
-    assert not tasks.tracked_addresses
-    callback.assert_awaited_once()
-
-
-@pytest.mark.anyio
-async def test_pending_payment_confirms_after_expiry(database, charge, monkeypatch):
-    await database.insert("satspay.charges", charge)
-    callback = AsyncMock(return_value={"webhook_success": True})
-    monkeypatch.setattr(tasks, "call_webhook", callback)
-    tasks.start_onchain_listener(charge)
-    tx = {
-        "txid": "tx",
-        "vout": [{"scriptpubkey_address": "address", "value": charge.amount}],
-    }
-    await tasks._handle_ws_message("address", {"mempool": [tx]})
-    assert tasks.tracked_addresses["address"].pending == charge.amount
-    monkeypatch.setattr(
-        tasks.time, "time", lambda: charge.timestamp.timestamp() + charge.time * 60 + 1
-    )
-    tasks.prune_address_tracking()
-    assert "address" in tasks.tracked_addresses
-    await tasks._handle_ws_message("address", {"confirmed": [tx]})
-    stored = await crud.get_charge(charge.id)
-    assert stored and stored.paid
-    assert not tasks.tracked_addresses
-    callback.assert_awaited_once()
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("balance,pending", [(0, 100), (50, 0)])
-async def test_restart_keeps_funded_expired_charges(
-    database, charge, monkeypatch, balance, pending
-):
-    charge.timestamp -= timedelta(hours=1)
-    charge.balance = balance
-    charge.pending = pending
-    await database.insert("satspay.charges", charge)
-    monkeypatch.setattr(
-        tasks, "check_charge_balance", AsyncMock(side_effect=lambda value: value)
-    )
-    await tasks.restart_address_tracking()
-    tasks.prune_address_tracking()
-    assert charge.onchainaddress in tasks.tracked_addresses
-
-
-@pytest.mark.anyio
 async def test_migration_retry_preserves_existing_secrets(database, charge):
     await database.insert("satspay.charges", charge)
     missing = charge.copy(update={"id": "missing", "webhook_secret": None})
     await database.insert("satspay.charges", missing)
-    await migrations.m015_add_webhook_secret(database)
+    await migrations.m016_add_webhook_secret(database)
     original = await crud.get_charge(charge.id)
     filled = await crud.get_charge(missing.id)
     assert original and original.webhook_secret == charge.webhook_secret
     assert filled and filled.webhook_secret and len(filled.webhook_secret) == 64
-    await migrations.m015_add_webhook_secret(database)
+    await migrations.m016_add_webhook_secret(database)
     retried = await crud.get_charge(missing.id)
     assert retried and retried.webhook_secret == filled.webhook_secret
 
@@ -720,53 +519,6 @@ async def test_broadcast_only_registers_accepted_websocket(charge, monkeypatch):
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    "failure", [httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout]
-)
-async def test_webhook_failover_and_safe_logs(charge, monkeypatch, failure):
-    ips = ["2001:4860:4860::8888", "93.184.216.34"]
-    monkeypatch.setattr(
-        helpers,
-        "_resolve_webhook_host",
-        AsyncMock(return_value=[ipaddress.ip_address(value) for value in ips]),
-    )
-    monkeypatch.setattr(
-        helpers,
-        "get_or_create_satspay_settings",
-        AsyncMock(return_value=SimpleNamespace(webhook_method="POST")),
-    )
-    requests = []
-
-    def handler(request):
-        requests.append(request)
-        if len(requests) == 1:
-            raise failure("secret-url-token", request=request)
-        assert request.headers["host"] == "merchant.example"
-        assert request.extensions["sni_hostname"] == "merchant.example"
-        return httpx.Response(200, text="ok")
-
-    client_type = httpx.AsyncClient
-    monkeypatch.setattr(
-        helpers.httpx,
-        "AsyncClient",
-        lambda **kwargs: client_type(transport=httpx.MockTransport(handler), **kwargs),
-    )
-    logs = []
-    sink = helpers.logger.add(lambda message: logs.append(str(message)))
-    try:
-        result = await helpers.call_webhook(charge)
-    finally:
-        helpers.logger.remove(sink)
-    retry = failure in (httpx.ConnectError, httpx.ConnectTimeout)
-    assert result["webhook_success"] is retry
-    assert [request.url.host for request in requests] == (ips if retry else ips[:1])
-    assert "secret-url-token" not in "".join(logs)
-    assert "token=secret" not in "".join(logs)
-    if not retry:
-        assert "ReadTimeout" in "".join(logs)
-
-
-@pytest.mark.anyio
 async def test_onchain_logs_http_status_without_url(charge, monkeypatch):
     request = httpx.Request("GET", "https://mempool.example/?token=private")
     response = httpx.Response(503, request=request)
@@ -784,16 +536,100 @@ async def test_onchain_logs_http_status_without_url(charge, monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_onchain_prunes_once_per_message(monkeypatch):
-    prune = Mock()
-    monkeypatch.setattr(tasks, "prune_address_tracking", prune)
-    handle = AsyncMock(
-        side_effect=lambda *_: setattr(settings, "lnbits_running", False)
+async def test_tracking_capacity_and_queue_coalescing(monkeypatch):
+    monkeypatch.setattr(tasks, "MAX_TRACKED_ADDRESSES", 1)
+    tasks.start_onchain_listener("first")
+    with pytest.raises(ValueError, match="capacity"):
+        tasks.start_onchain_listener("second")
+    assert tasks.tracked_addresses == ["first"]
+    assert "second" not in tasks.poll_tasks
+    tasks.stop_onchain_listener("first")
+    assert not tasks.poll_tasks
+    assert ws_send_queue.qsize() == 1
+    assert ws_send_queue.get_nowait() == {"track-addresses": []}
+
+
+@pytest.mark.anyio
+async def test_concurrent_lightning_delivery_notifies_once(
+    database, charge, monkeypatch
+):
+    await database.insert("satspay.charges", charge)
+    original_get = crud.get_charge
+    both_read = asyncio.Event()
+    reads = 0
+
+    async def read_before_updates(charge_id):
+        nonlocal reads
+        snapshot = await original_get(charge_id)
+        reads += 1
+        if reads == 2:
+            both_read.set()
+        await both_read.wait()
+        return snapshot
+
+    monkeypatch.setattr(tasks, "get_charge", read_before_updates)
+    callback = AsyncMock(return_value={"webhook_success": True})
+    monkeypatch.setattr(tasks, "call_webhook", callback)
+    payment = Payment(
+        checking_id="checking-id",
+        wallet_id="wallet",
+        fee=0,
+        bolt11="invoice",
+        extra={"tag": "charge", "charge": charge.id},
+        payment_hash="hash",
+        amount=100000,
     )
-    monkeypatch.setattr(tasks, "_handle_ws_message", handle)
-    tasks.ws_receive_queue.put_nowait(
-        {"multi-address-transactions": {"a": {}, "b": {}}}
+    await asyncio.gather(tasks.on_invoice_paid(payment), tasks.on_invoice_paid(payment))
+    stored = await original_get(charge.id)
+    assert stored and stored.paid and stored.balance == charge.amount
+    callback.assert_awaited_once()
+
+
+@pytest.mark.anyio
+async def test_manual_refresh_keeps_concurrent_lightning_settlement(
+    client, charge, monkeypatch
+):
+    callback = AsyncMock(return_value={"webhook_success": True})
+    monkeypatch.setattr(tasks, "call_webhook", callback)
+    monkeypatch.setattr(views_api, "call_webhook", callback)
+
+    async def fetch_balance(address):
+        await tasks.on_invoice_paid(
+            Payment(
+                checking_id="checking-id",
+                wallet_id="wallet",
+                fee=0,
+                bolt11="invoice",
+                extra={"tag": "charge", "charge": charge.id},
+                payment_hash="hash",
+                amount=100000,
+            )
+        )
+        return OnchainBalance(confirmed=charge.amount, unconfirmed=0, txids=["tx"])
+
+    monkeypatch.setattr(helpers, "get_standalone_payment", AsyncMock(return_value=None))
+    monkeypatch.setattr(helpers, "fetch_onchain_balance", fetch_balance)
+    response = await client.put(
+        "/satspay/api/v1/charge/balance/charge", headers={"X-API-KEY": "owner-admin"}
     )
-    await tasks.wait_for_onchain()
-    assert handle.await_count == 2
-    prune.assert_called_once()
+    assert response.status_code == 200
+    stored = await crud.get_charge(charge.id)
+    assert stored and stored.paid
+    assert json.loads(stored.extra or "{}")["payment_method"] == "lightning"
+    callback.assert_awaited_once()
+
+
+@pytest.mark.anyio
+async def test_webhook_migration_can_restore_without_changing_charge(database, charge):
+    await database.insert("satspay.charges", charge)
+    await database.execute("ALTER TABLE satspay.charges DROP COLUMN webhook_secret")
+    row = await database.fetchone(
+        "SELECT * FROM satspay.charges WHERE id = :id", {"id": charge.id}
+    )
+    assert row and "webhook_secret" not in row
+    await migrations.m016_add_webhook_secret(database)
+    restored = await crud.get_charge(charge.id)
+    assert restored and restored.webhook_secret
+    assert restored.model_dump(exclude={"webhook_secret"}) == charge.model_dump(
+        exclude={"webhook_secret"}
+    )

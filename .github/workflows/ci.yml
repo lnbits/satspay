@@ -33,4 +33,4 @@ jobs:
           custom-pytest: uv run pytest
           report-title: 'test (${{ matrix.python-version }})'
       - name: Run frontend security tests
-        run: node tests/test_security.cjs
+        run: node --test tests/*.cjs

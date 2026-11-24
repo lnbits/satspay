@@ -12,7 +12,6 @@ from .crud import (
     get_charge,
     get_charge_by_onchain_address,
     get_pending_charges,
-    update_charge,
     update_charge_webhook,
     update_pending_charge,
 )
@@ -41,7 +40,9 @@ async def restart_address_tracking():
                 stop_onchain_listener(charge.onchainaddress)
         except Exception as exc:
             logger.warning(
-                f"Onchain charge refresh failed for {charge.onchainaddress}: {type(exc).__name__}"
+                "Onchain charge refresh failed for {}: {}",
+                charge.onchainaddress,
+                type(exc).__name__,
             )
 
 
@@ -92,7 +93,8 @@ async def on_invoice_paid(payment: Payment) -> None:
         charge.paid = charge.balance >= charge.amount
         logger.success(f"Charge {charge.id} invoice paid.")
         charge.add_extra({"payment_method": "lightning"})
-        charge = await update_charge(charge)
+        if not await update_pending_charge(charge):
+            return
         if charge.paid and charge.onchainaddress:
             stop_onchain_listener(charge.onchainaddress)
         await send_success_websocket(charge)
@@ -146,7 +148,9 @@ async def wait_for_onchain():
                 if not await _refresh_onchain_charge(address):
                     stop_onchain_listener(address)
             except Exception as exc:
-                logger.warning(f"Onchain charge update failed for {address}: {type(exc).__name__}")
+                logger.warning(
+                    f"Onchain charge update failed for {address}: {type(exc).__name__}"
+                )
 
 
 async def _poll_charge(address: str):
@@ -157,7 +161,9 @@ async def _poll_charge(address: str):
                 stop_onchain_listener(address)
                 return
         except Exception as exc:
-            logger.warning(f"Onchain charge poll failed for {address}: {type(exc).__name__}")
+            logger.warning(
+                f"Onchain charge poll failed for {address}: {type(exc).__name__}"
+            )
 
 
 def _should_track_onchain_charge(charge: Charge) -> bool:

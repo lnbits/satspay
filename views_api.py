@@ -21,8 +21,8 @@ from .crud import (
     get_charge_by_onchain_address,
     get_charges,
     get_or_create_satspay_settings,
-    update_charge,
     update_charge_webhook,
+    update_pending_charge,
     update_satspay_settings,
 )
 from .helpers import (
@@ -133,7 +133,9 @@ async def api_charge_create(
                 detail="Error fetching onchain address.",
             ) from exc
         if await get_charge_by_onchain_address(new_address):
-            raise HTTPException(HTTPStatus.CONFLICT, "Onchain address is already in use.")
+            raise HTTPException(
+                HTTPStatus.CONFLICT, "Onchain address is already in use."
+            )
         charge = await create_charge(
             user=key_type.wallet.user,
             onchainaddress=new_address,
@@ -188,7 +190,8 @@ async def api_charge_check_balance(
         )
     charge = await check_charge_balance(charge, notify_webhook=False)
     notify_paid = charge.paid
-    charge = await update_charge(charge)
+    if not await update_pending_charge(charge):
+        return await _get_owned_charge(charge_id, wallet.wallet.user)
     if charge.paid:
         if charge.onchainaddress:
             stop_onchain_listener(charge.onchainaddress)

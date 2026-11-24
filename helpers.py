@@ -1,8 +1,8 @@
 import hmac
 import json
 import re
-from time import time
 from http import HTTPStatus
+from time import time
 from urllib.parse import quote, urlsplit
 
 import httpx
@@ -36,7 +36,9 @@ async def call_webhook(charge: Charge):
         settings = await get_or_create_satspay_settings()
         payload = charge.model_dump_json(exclude={"webhook_secret"})
         # Preserve Wordpress's JSON string payload for POST callbacks.
-        body = (json.dumps(payload) if settings.webhook_method == "POST" else payload).encode()
+        body = (
+            json.dumps(payload) if settings.webhook_method == "POST" else payload
+        ).encode()
         timestamp = str(int(time()))
         signature = hmac.new(
             charge.webhook_secret.encode(), timestamp.encode() + b"." + body, "sha256"
@@ -232,6 +234,8 @@ async def check_charge_balance(charge: Charge, notify_webhook: bool = True) -> C
             if status.success:
                 charge.add_extra({"payment_method": "lightning"})
                 charge.balance = charge.amount
+                charge.paid = True
+                return charge
 
     if charge.onchainaddress:
         try:
@@ -251,9 +255,11 @@ async def check_charge_balance(charge: Charge, notify_webhook: bool = True) -> C
         except Exception as exc:
             logger.warning(
                 "Charge check onchain address failed: {}",
-                f"HTTP {exc.response.status_code}"
-                if isinstance(exc, httpx.HTTPStatusError)
-                else type(exc).__name__
+                (
+                    f"HTTP {exc.response.status_code}"
+                    if isinstance(exc, httpx.HTTPStatusError)
+                    else type(exc).__name__
+                ),
             )
 
     charge.paid = charge.balance >= charge.amount

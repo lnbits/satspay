@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 import pytest_asyncio
-from lnbits.core.models import Payment
+from lnbits.core.models import KeyType, Payment, Wallet, WalletTypeInfo
 from lnbits.db import Database
 from lnbits.settings import settings
 
@@ -57,17 +57,12 @@ def refresh_mocks(monkeypatch):
         state.notify_webhook = notify_webhook
         return state.checked
 
-    async def update_charge(charge):
-        state.updated.append(charge)
-        return charge
-
     async def update_pending_charge(charge):
         state.updated.append(charge)
         return True
 
     monkeypatch.setattr(tasks, "get_charge_by_onchain_address", get_charge)
     monkeypatch.setattr(tasks, "check_charge_balance", check_charge_balance)
-    monkeypatch.setattr(tasks, "update_charge", update_charge)
     monkeypatch.setattr(tasks, "update_charge_webhook", AsyncMock(return_value=True))
     monkeypatch.setattr(tasks, "update_pending_charge", update_pending_charge)
     monkeypatch.setattr(tasks, "send_success_websocket", state.websocket)
@@ -259,6 +254,7 @@ def test_ws_message_refreshes_tracked_address(monkeypatch):
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
 
+    monkeypatch.setattr(tasks, "tracked_addresses", ["address"])
     monkeypatch.setattr(settings, "lnbits_running", True)
     monkeypatch.setattr(tasks, "_refresh_onchain_charge", refresh)
     try:
@@ -288,6 +284,7 @@ def test_ws_message_stops_tracking_paid_charge(monkeypatch):
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
 
+    monkeypatch.setattr(tasks, "tracked_addresses", ["address"])
     monkeypatch.setattr(settings, "lnbits_running", True)
     monkeypatch.setattr(tasks, "_refresh_onchain_charge", refresh)
     monkeypatch.setattr(tasks, "stop_onchain_listener", stop)
@@ -353,7 +350,7 @@ def test_poll_continues_until_charge_closes(monkeypatch):
     stop.assert_called_once_with("address")
 
 
-def test_tracking_messages_snapshot_addresses(monkeypatch):
+def test_tracking_messages_coalesce_addresses(monkeypatch):
     async def run():
         websocket_handler.tracked_addresses.clear()
         tasks.poll_tasks.clear()
@@ -364,11 +361,10 @@ def test_tracking_messages_snapshot_addresses(monkeypatch):
         poll_a = tasks.poll_tasks["address-a"]
         poll_b = tasks.poll_tasks["address-b"]
 
-        first = websocket_handler.ws_send_queue.get_nowait()
-        second = websocket_handler.ws_send_queue.get_nowait()
-
-        assert first == {"track-addresses": ["address-a"]}
-        assert second == {"track-addresses": ["address-a", "address-b"]}
+        assert websocket_handler.ws_send_queue.qsize() == 1
+        assert websocket_handler.ws_send_queue.get_nowait() == {
+            "track-addresses": ["address-a", "address-b"]
+        }
 
         tasks.stop_onchain_listener("address-a")
         tasks.stop_onchain_listener("address-b")
@@ -481,7 +477,17 @@ async def test_slow_webhook_preserves_newer_payment_state(
         tasks._notify_onchain_charge(charge)
         if source == "onchain"
         else views_api.api_charge_webhook(
-            charge.id, SimpleNamespace(wallet=SimpleNamespace(user=charge.user))
+            charge.id,
+            WalletTypeInfo(
+                KeyType.admin,
+                Wallet(
+                    id="wallet",
+                    user=charge.user,
+                    name="wallet",
+                    inkey="invoice-key",
+                    adminkey="admin-key",
+                ),
+            ),
         )
     )
     try:
